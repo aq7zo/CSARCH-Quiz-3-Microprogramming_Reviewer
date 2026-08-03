@@ -1,0 +1,911 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Microcode Reviewer — Assembly to RTN</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600;700&family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Sans+Condensed:wght@500;600;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#0c1a26;
+  --bg-panel:#112536;
+  --bg-panel-2:#0f2131;
+  --bg-card:#12293b;
+  --grid-line: rgba(232,237,242,0.055);
+  --trace:#c98a4b;
+  --trace-dim: rgba(201,138,75,0.28);
+  --signal:#f2b134;
+  --signal-glow: rgba(242,177,52,0.55);
+  --ink:#e8edf2;
+  --ink-dim:#93a7b8;
+  --ink-faint:#5c7284;
+  --danger:#d9695f;
+  --danger-bg: rgba(217,105,95,0.09);
+  --ok:#6fae8a;
+  --border: rgba(232,237,242,0.09);
+  --font-display: 'IBM Plex Sans Condensed', sans-serif;
+  --font-body: 'IBM Plex Sans', sans-serif;
+  --font-mono: 'IBM Plex Mono', monospace;
+}
+*{box-sizing:border-box;}
+html{scroll-behavior:smooth;}
+body{
+  margin:0;
+  background:
+    linear-gradient(var(--grid-line) 1px, transparent 1px) 0 0/38px 38px,
+    linear-gradient(90deg, var(--grid-line) 1px, transparent 1px) 0 0/38px 38px,
+    var(--bg);
+  color:var(--ink);
+  font-family:var(--font-body);
+  line-height:1.55;
+  -webkit-font-smoothing:antialiased;
+}
+::selection{ background: var(--signal-glow); color:#131313; }
+
+/* ---------- layout shell ---------- */
+.shell{
+  display:grid;
+  grid-template-columns: 300px 1fr;
+  min-height:100vh;
+}
+@media (max-width: 900px){
+  .shell{ grid-template-columns: 1fr; }
+  .sidebar{ position:relative; height:auto; width:100%; }
+}
+
+/* ---------- sidebar ---------- */
+.sidebar{
+  position:sticky; top:0; height:100vh; overflow-y:auto;
+  background:var(--bg-panel-2);
+  border-right:1px solid var(--border);
+  padding:22px 0 40px;
+}
+.sidebar::-webkit-scrollbar{width:8px;}
+.sidebar::-webkit-scrollbar-thumb{background:rgba(232,237,242,0.12); border-radius:4px;}
+
+.brand{
+  padding:0 22px 18px;
+  border-bottom:1px solid var(--border);
+  margin-bottom:6px;
+}
+.credit{
+  font-family:var(--font-mono); font-size:10px; line-height:1.6; color:var(--ink-faint);
+  padding-top:14px; margin-bottom:14px;
+}
+.credit div:first-child{ color:var(--ink-dim); }
+.brand .eyebrow{
+  font-family:var(--font-mono); font-size:10.5px; letter-spacing:.16em; text-transform:uppercase;
+  color:var(--trace); display:flex; align-items:center; gap:8px;
+}
+.brand .eyebrow::before{ content:""; width:7px; height:7px; border-radius:50%; background:var(--signal); box-shadow:0 0 8px var(--signal-glow); }
+.brand h1{
+  font-family:var(--font-display); font-size:21px; font-weight:700; margin:8px 0 4px; line-height:1.15;
+  letter-spacing:.01em;
+}
+.brand p{ margin:0; font-size:12.5px; color:var(--ink-dim); }
+
+.progress-wrap{ padding:14px 22px 4px; }
+.progress-track{ height:5px; background:rgba(232,237,242,0.08); border-radius:3px; overflow:hidden; }
+.progress-fill{ height:100%; width:0%; background:linear-gradient(90deg, var(--trace), var(--signal)); transition:width .4s ease; }
+.progress-label{ font-family:var(--font-mono); font-size:10.5px; color:var(--ink-faint); margin-top:6px; display:flex; justify-content:space-between; }
+
+.nav-section{ margin-top:14px; }
+.nav-section-title{
+  font-family:var(--font-mono); font-size:10.5px; letter-spacing:.12em; text-transform:uppercase;
+  color:var(--ink-faint); padding:6px 22px; display:flex; justify-content:space-between; align-items:center;
+}
+.nav-list{ list-style:none; margin:0; padding:0; }
+.nav-item a{
+  display:flex; align-items:center; gap:10px;
+  padding:6px 22px; text-decoration:none; color:var(--ink-dim);
+  font-size:13px; border-left:2px solid transparent;
+  transition: background .15s, color .15s, border-color .15s;
+}
+.nav-item a .num{
+  font-family:var(--font-mono); font-size:10.5px; color:var(--ink-faint); width:20px; flex-shrink:0;
+}
+.nav-item a:hover{ background:rgba(201,138,75,0.08); color:var(--ink); }
+.nav-item a.active{ background:rgba(242,177,52,0.09); color:var(--ink); border-left-color:var(--signal); }
+.nav-item a.done .num{ color:var(--ok); }
+.nav-item a.invalid .num{ color:var(--danger); }
+.nav-item a.done::after{ content:"●"; font-size:6px; color:var(--ok); margin-left:auto; }
+
+/* ---------- main ---------- */
+main{ position:relative; padding: 48px clamp(20px,5vw,72px) 120px; max-width:980px; }
+
+/* the signature bus rail */
+.bus-rail{
+  position:absolute; left:clamp(0px,2.2vw,26px); top:340px; bottom:80px; width:34px;
+  display:flex; justify-content:space-between;
+}
+.bus-rail .wire{ position:relative; width:2px; background:rgba(232,237,242,0.08); border-radius:2px; }
+.bus-rail .wire[data-b="addr"]{ background: linear-gradient(rgba(232,237,242,0.08), rgba(232,237,242,0.08)); }
+@media (max-width: 780px){ .bus-rail{ display:none; } }
+
+header.hero{ margin-bottom:56px; }
+.hero-eyebrow{
+  font-family:var(--font-mono); font-size:11px; letter-spacing:.18em; text-transform:uppercase; color:var(--trace);
+  margin-bottom:14px;
+}
+.hero h1{
+  font-family:var(--font-display); font-weight:700; font-size:clamp(30px,4.2vw,46px);
+  line-height:1.05; margin:0 0 18px; letter-spacing:.005em;
+}
+.hero h1 em{ font-style:normal; color:var(--signal); }
+.hero p.lede{ font-size:16px; color:var(--ink-dim); max-width:640px; margin:0 0 6px; }
+.hero .sub-lede{ font-size:13.5px; color:var(--ink-faint); max-width:640px; }
+
+/* schematic mini-diagram */
+.schematic{
+  margin:34px 0 0; border:1px solid var(--border); background:var(--bg-panel);
+  border-radius:10px; padding:22px 24px; font-family:var(--font-mono); font-size:12.5px; color:var(--ink-dim);
+  display:grid; grid-template-columns: repeat(3,1fr); gap:14px;
+}
+.schematic .cell{ border-left:2px solid var(--trace); padding-left:12px; }
+.schematic .cell b{ display:block; color:var(--ink); font-family:var(--font-display); font-size:13.5px; font-weight:600; margin-bottom:4px; }
+@media (max-width:640px){ .schematic{ grid-template-columns:1fr; } }
+
+/* foundations block */
+.foundation{
+  margin: 20px 0 64px; border:1px solid var(--border); border-radius:12px; background:var(--bg-panel);
+  overflow:hidden;
+}
+.foundation summary{
+  cursor:pointer; list-style:none; padding:18px 24px; display:flex; align-items:center; gap:12px;
+  font-family:var(--font-display); font-weight:600; font-size:16.5px;
+}
+.foundation summary::-webkit-details-marker{ display:none; }
+.foundation summary::before{ content:"▸"; color:var(--signal); transition:transform .2s; font-size:13px; }
+.foundation[open] summary::before{ transform:rotate(90deg); }
+.foundation summary .tag{
+  margin-left:auto; font-family:var(--font-mono); font-size:10.5px; color:var(--ink-faint); font-weight:400;
+  text-transform:uppercase; letter-spacing:.1em;
+}
+.foundation-body{ padding:0 24px 26px; }
+.foundation-grid{ display:grid; grid-template-columns:1fr 1fr; gap:22px; margin-top:6px; }
+@media (max-width:720px){ .foundation-grid{ grid-template-columns:1fr; } }
+.f-block h3{ font-family:var(--font-display); font-size:14.5px; margin:0 0 8px; color:var(--signal); font-weight:600; }
+.f-block p, .f-block li{ font-size:13.6px; color:var(--ink-dim); margin:0 0 8px; }
+.f-block ul{ margin:0; padding-left:18px; }
+.gate-demo{
+  font-family:var(--font-mono); font-size:12.5px; background:var(--bg-panel-2); border:1px solid var(--border);
+  border-radius:8px; padding:12px 14px; margin-top:10px; color:var(--ink);
+}
+.gate-demo .out{ color:var(--trace); } .gate-demo .in{ color:var(--signal); }
+
+/* section headers */
+.section-head{ margin: 66px 0 26px; scroll-margin-top:26px; }
+.section-head .kicker{ font-family:var(--font-mono); font-size:11px; color:var(--trace); letter-spacing:.14em; text-transform:uppercase; margin-bottom:8px; }
+.section-head h2{ font-family:var(--font-display); font-size:clamp(22px,3vw,30px); font-weight:700; margin:0 0 8px; }
+.section-head p{ color:var(--ink-dim); font-size:14px; max-width:640px; margin:0; }
+.section-head hr{ border:none; border-top:1px dashed var(--border); margin-top:22px; }
+
+/* instruction card */
+.card{
+  position:relative;
+  background:var(--bg-card);
+  border:1px solid var(--border);
+  border-radius:12px;
+  margin-bottom:22px;
+  padding:22px 24px 22px;
+  scroll-margin-top: 24px;
+  transition: border-color .2s;
+}
+.card.invalid{ background:var(--danger-bg); border-color: rgba(217,105,95,0.35); }
+.card-top{ display:flex; align-items:flex-start; gap:14px; flex-wrap:wrap; }
+.card-num{
+  font-family:var(--font-mono); font-size:12px; color:var(--bg); background:var(--trace);
+  width:30px; height:30px; border-radius:7px; display:flex; align-items:center; justify-content:center;
+  flex-shrink:0; font-weight:600;
+}
+.card.invalid .card-num{ background:var(--danger); }
+.card-title-wrap{ flex:1; min-width:200px; }
+.card-asm{
+  font-family:var(--font-mono); font-size:18px; font-weight:600; color:var(--ink); letter-spacing:.01em;
+}
+.card-mode{ font-size:12px; color:var(--ink-faint); margin-top:3px; font-family:var(--font-mono); }
+.badge{
+  font-family:var(--font-mono); font-size:10px; letter-spacing:.06em; text-transform:uppercase;
+  padding:3px 8px; border-radius:5px; border:1px solid var(--border); color:var(--ink-dim); white-space:nowrap;
+}
+.badge.invalid-badge{ color:var(--danger); border-color:rgba(217,105,95,0.4); }
+.badge.ext-badge{ color:var(--signal); border-color:rgba(242,177,52,0.35); cursor:help; }
+
+.ext-note{
+  font-size:12.5px; color:var(--ink-faint); background:rgba(242,177,52,0.06); border-left:2px solid var(--signal);
+  padding:8px 12px; border-radius:0 6px 6px 0; margin-top:14px;
+}
+
+.hint-toggle{
+  margin-top:16px; background:none; border:1px dashed var(--border); color:var(--ink-dim);
+  font-family:var(--font-mono); font-size:12px; padding:7px 12px; border-radius:7px; cursor:pointer;
+}
+.hint-toggle:hover{ border-color:var(--trace); color:var(--ink); }
+.hint-body{
+  display:none; font-size:13.5px; color:var(--ink-dim); margin-top:10px; padding:10px 14px;
+  background:var(--bg-panel-2); border-radius:8px; border-left:2px solid var(--trace);
+}
+.hint-body.show{ display:block; }
+
+.stepper{ margin-top:20px; }
+.stepper-controls{ display:flex; align-items:center; gap:10px; flex-wrap:wrap; margin-bottom:14px; }
+.btn{
+  font-family:var(--font-mono); font-size:12.5px; padding:8px 14px; border-radius:7px; cursor:pointer;
+  border:1px solid var(--trace); background:transparent; color:var(--trace); transition: all .15s;
+}
+.btn:hover{ background:var(--trace); color:var(--bg); }
+.btn.secondary{ border-color:var(--border); color:var(--ink-dim); }
+.btn.secondary:hover{ background:rgba(232,237,242,0.08); color:var(--ink); }
+.btn:disabled{ opacity:.35; cursor:default; }
+.btn:disabled:hover{ background:transparent; color:var(--trace); }
+.cycle-count{ font-family:var(--font-mono); font-size:11.5px; color:var(--ink-faint); margin-left:auto; }
+
+.fetch-chip{
+  font-family:var(--font-mono); font-size:11px; color:var(--ink-faint); border:1px solid var(--border);
+  border-radius:7px; padding:6px 10px; margin-bottom:14px; display:inline-block;
+}
+.fetch-chip b{ color:var(--ink-dim); font-weight:600; }
+
+.rtn-lines{ display:flex; flex-direction:column; gap:8px; }
+.rtn-line{
+  display:grid; grid-template-columns: 34px 1fr auto; align-items:center; gap:14px;
+  background:var(--bg-panel-2); border:1px solid var(--border); border-radius:8px;
+  padding:10px 14px; opacity:0; transform:translateY(4px);
+  animation: reveal .35s ease forwards;
+}
+@keyframes reveal{ to{ opacity:1; transform:translateY(0); } }
+.rtn-line .ln{ font-family:var(--font-mono); font-size:11px; color:var(--ink-faint); }
+.rtn-line .code{ font-family:var(--font-mono); font-size:14px; color:var(--ink); line-height:1.5; }
+.rtn-line.current{ border-color:var(--signal); box-shadow:0 0 0 1px rgba(242,177,52,0.25), 0 0 14px rgba(242,177,52,0.12); }
+.rtn-line.current .code{ color:#fbe4b0; }
+.bus-tags{ display:flex; gap:5px; }
+.bus-tag{
+  font-family:var(--font-mono); font-size:9.5px; width:20px; height:20px; border-radius:5px;
+  display:flex; align-items:center; justify-content:center; border:1px solid var(--border); color:var(--ink-faint);
+}
+.bus-tag.on-addr{ border-color:var(--trace); color:var(--trace); background:rgba(201,138,75,0.12); }
+.bus-tag.on-data{ border-color:#7fb0c9; color:#7fb0c9; background:rgba(127,176,201,0.12); }
+.bus-tag.on-ctrl{ border-color:var(--signal); color:var(--signal); background:rgba(242,177,52,0.12); }
+
+.note-box{
+  margin-top:16px; font-size:13.5px; color:var(--ink-dim); background:rgba(111,174,138,0.06);
+  border-left:2px solid var(--ok); padding:10px 14px; border-radius:0 6px 6px 0; display:none;
+}
+.note-box.show{ display:block; }
+
+.invalid-reveal{
+  margin-top:16px; font-size:14px; color:var(--ink); line-height:1.65; display:none;
+  border-left:2px solid var(--danger); padding:12px 16px; background:rgba(217,105,95,0.07); border-radius:0 8px 8px 0;
+}
+.invalid-reveal.show{ display:block; }
+
+/* typed-answer input row */
+.rtn-input-row{ display:flex; gap:10px; align-items:center; flex-wrap:wrap; }
+.rtn-input-row .ln{ font-family:var(--font-mono); font-size:12px; color:var(--ink-faint); width:28px; flex-shrink:0; }
+.rtn-input{
+  flex:1; min-width:220px; font-family:var(--font-mono); font-size:13.5px;
+  background:var(--bg-panel-2); border:1px solid var(--border); border-radius:8px;
+  padding:10px 12px; color:var(--ink);
+}
+.rtn-input:focus{ outline:none; border-color:var(--signal); box-shadow:0 0 0 2px rgba(242,177,52,0.15); }
+.rtn-input.wrong{ border-color:var(--danger); }
+.rtn-input.right{ border-color:var(--ok); }
+.rtn-input:disabled{ opacity:.75; }
+.feedback-msg{ font-family:var(--font-mono); font-size:12px; margin-top:9px; min-height:15px; }
+.feedback-msg.correct{ color:var(--ok); }
+.feedback-msg.incorrect{ color:var(--danger); }
+.feedback-msg.revealed-msg{ color:var(--signal); }
+.row-actions{ margin-top:10px; }
+.tag-pill{
+  font-family:var(--font-mono); font-size:9px; padding:2px 7px; border-radius:5px;
+  border:1px solid var(--border); white-space:nowrap;
+}
+.tag-pill.correct{ color:var(--ok); border-color:rgba(111,174,138,.4); }
+.tag-pill.revealed{ color:var(--signal); border-color:rgba(242,177,52,.4); }
+.rtn-line .bus-tags{ display:flex; gap:5px; align-items:center; }
+
+/* flashcard (invalid instructions) */
+.flashcard{ margin-top:4px; }
+.flash-front{
+  font-family:var(--font-display); font-size:16px; font-weight:600; color:var(--ink);
+  background:var(--bg-panel-2); border:1px solid var(--border); border-left:2px solid var(--danger);
+  border-radius:0 8px 8px 0; padding:16px 18px; margin-bottom:14px;
+}
+.flash-btn{ border-color:var(--danger); color:var(--danger); }
+.flash-btn:hover{ background:var(--danger); color:var(--bg); }
+.invalid-reveal code{
+  font-family:var(--font-mono); font-size:12.5px; background:rgba(232,237,242,0.07);
+  padding:1px 5px; border-radius:4px; color:var(--signal);
+}
+
+footer{
+  max-width:980px; margin: 40px clamp(20px,5vw,72px) 60px; padding-top:26px; border-top:1px solid var(--border);
+  color:var(--ink-faint); font-size:12.5px; font-family:var(--font-mono);
+}
+
+/* legend chip row used at top of main */
+.legend{ display:flex; gap:16px; flex-wrap:wrap; margin-top:26px; }
+.legend .item{ display:flex; align-items:center; gap:7px; font-family:var(--font-mono); font-size:11.5px; color:var(--ink-faint); }
+.legend .dot{ width:16px; height:16px; border-radius:5px; display:inline-flex; align-items:center; justify-content:center; font-size:9px; border:1px solid var(--border); }
+</style>
+</head>
+<body>
+
+<div class="shell">
+  <!-- ============ SIDEBAR ============ -->
+  <nav class="sidebar" id="sidebar">
+    <div class="brand">
+      <div class="credit">
+        <div>Made by: B.E. Campo &amp; J.O. Morgan</div>
+      </div>
+      <div class="eyebrow">Control Unit</div>
+      <h1>Microcode Reviewer</h1>
+      <p>Assembly → gate-level RTN, one instruction at a time.</p>
+    </div>
+    <div class="progress-wrap">
+      <div class="progress-track"><div class="progress-fill" id="progressFill"></div></div>
+      <div class="progress-label"><span id="progressText">0 / 40 worked</span><span>reset ↻</span></div>
+    </div>
+    <div id="navSections"></div>
+  </nav>
+
+  <!-- ============ MAIN ============ -->
+  <main>
+    <div class="bus-rail" aria-hidden="true">
+      <div class="wire" data-b="addr"></div>
+      <div class="wire" data-b="data"></div>
+      <div class="wire" data-b="ctrl"></div>
+    </div>
+
+    <header class="hero">
+      <div class="hero-eyebrow">Forward Microcode Translation · Worked Reviewer</div>
+      <h1>From <em>x86-ish assembly</em><br>to gate-level RTN.</h1>
+      <p class="lede">You already read assembly fluently. This reviewer teaches the missing layer underneath it: the exact sequence of register-transfer gating signals a single-bus control unit fires, cycle by cycle, to actually carry out each instruction.</p>
+      <p class="sub-lede">Built directly on the Von Neumann datapath model — shared internal bus, MAR/MDR/Y/Z, and the four basic micro-operations. 40 instructions, worked one at a time, hardest ones last in each section.</p>
+      <p class="sub-lede" style="margin-top:8px;">You type each cycle's gating signals yourself. It's flagged <strong style="color:var(--ok);">correct</strong> or <strong style="color:var(--danger);">not quite</strong> before you can move to the next line — signal order within a cycle doesn't matter (they all fire at once), but every signal name does. Two instructions in Section&nbsp;2 can't be encoded at all; those are flashcards, not exercises.</p>
+
+      <div class="legend">
+        <span class="item"><span class="dot on-addr" style="border-color:var(--trace); color:var(--trace);">A</span> address bus active</span>
+        <span class="item"><span class="dot on-data" style="border-color:#7fb0c9; color:#7fb0c9;">D</span> data bus active</span>
+        <span class="item"><span class="dot on-ctrl" style="border-color:var(--signal); color:var(--signal);">C</span> control signal fires</span>
+        <span class="item"><span class="dot">·</span> internal bus only</span>
+      </div>
+    </header>
+
+    <!-- ============ FOUNDATIONS ============ -->
+    <details class="foundation" id="foundations" open>
+      <summary>Foundations recap — read this before line 1 <span class="tag">5 min</span></summary>
+      <div class="foundation-body">
+        <div class="foundation-grid">
+          <div class="f-block">
+            <h3>The single shared bus</h3>
+            <p>Every register (R0–Rn, PC, IR, MAR, MDR, TEMP, Y, Z) hangs off one internal CPU bus. Only <strong>one</strong> component may drive ("gate onto") that bus at a time — but many registers may listen and latch the value simultaneously.</p>
+            <h3>Gating notation</h3>
+            <div class="gate-demo"><span class="out">RSIout</span>, <span class="in">RAXin</span></div>
+            <p style="margin-top:8px;"><span class="out" style="color:var(--trace);">out</span> = this register drives the bus. <span class="in" style="color:var(--signal);">in</span> = this register reads the bus this cycle. A line can have one <em>out</em> and several <em>in</em>s.</p>
+          </div>
+          <div class="f-block">
+            <h3>The four basic micro-operations</h3>
+            <ul>
+              <li><strong>Register Transfer</strong> — <code>sourceout, destinationin</code></li>
+              <li><strong>ALU Operation</strong> — operand(s) staged through Y, result lands in Z, then <code>Zout, destinationin</code></li>
+              <li><strong>Memory Fetch</strong> — <code>addrout, MARin, Read, WMFC</code> then <code>MDRout, destinationin</code></li>
+              <li><strong>Memory Store</strong> — <code>addrout, MARin</code> and <code>dataout, MDRin, Write, WMFC</code></li>
+            </ul>
+            <h3>IR's two faces</h3>
+            <p><code>IRAFout</code> exposes the instruction's <em>address field</em> (a label/displacement baked into the instruction). <code>IRDFout</code> exposes its <em>data field</em> (an immediate value). The CU can always see IR's contents directly.</p>
+          </div>
+        </div>
+        <div class="f-block" style="margin-top:18px;">
+          <h3>Fetch phase — identical for every instruction in this reviewer</h3>
+          <div class="fetch-chip"><b>1.</b> PCout, MARin, Read, Select4, Add, Zin</div>
+          <div class="fetch-chip"><b>2.</b> Zout, PCin, WMFC</div>
+          <div class="fetch-chip"><b>3.</b> MDRout, IRin</div>
+          <p>Every card below starts numbering at <strong>line 4</strong> — the execute phase — because lines 1–3 already happened, every single time, exactly like this. Every execute phase ends in <strong>END</strong>, which tells the CU to loop back and fetch the next instruction.</p>
+        </div>
+      </div>
+    </details>
+
+    <div id="app"></div>
+
+    <footer>
+      <p>Reviewer generated for self-study. Use it to rehearse and understand microcode translations.</p>
+    </footer>
+  </main>
+</div>
+
+<script>
+/* ======================================================================
+   DATA
+   ====================================================================== */
+const SECTIONS = [
+  {
+    id: "s1", n:1, title:"Data Movement & Stack Operations",
+    kicker:"Section 1",
+    blurb:"Every load/store mode, plus the stack operations never covered — PUSH, POP and RET, built from the same Memory Fetch / Memory Store skeletons.",
+    items: [
+      {n:1, asm:"MOV RAX, RSI", mode:"Register → Register",
+        hint:"Both operands already live in registers. Ask yourself: does this ever need MAR, MDR, or the ALU? If the answer is no, it's the shortest possible microprogram.",
+        lines:["RSIout, RAXin, END"],
+        note:"The purest form of Register Transfer: one out, one in, same cycle. No bus traffic ever leaves the chip."},
+      {n:2, asm:"MOV RAX, [RSI]", mode:"Register Indirect (load)",
+        hint:"RSI doesn't hold the value — it holds the ADDRESS of the value. That's the whole definition of 'indirect'. So RSI has to go into MAR, not into RAX.",
+        lines:["RSIout, MARin, READ, WMFC","MDRout, RAXin, END"],
+        note:"Classic Memory Fetch skeleton: address_source→MAR, READ, wait for MFC, then MDR→destination."},
+      {n:3, asm:"MOV [RSI], RAX", mode:"Register Indirect (store)",
+        hint:"Now RSI is still an address, but RAX is the DATA going the other direction. Memory Store needs an address in MAR and a value in MDR before WRITE can fire.",
+        lines:["RAXout, MDRin","RSIout, MARin, WRITE, WMFC, END"],
+        note:"This is explicitly allowed: loading MDR may precede loading MAR, and WMFC can sit on a later line, as long as both registers are full before WRITE completes."},
+      {n:4, asm:"MOV RSI, 0x1234", mode:"Immediate",
+        hint:"0x1234 isn't a register or a memory location — it rode into the CPU already sitting inside the instruction itself.",
+        lines:["IRDFout, RSIin, END"],
+        note:"Immediate operands never touch memory a second time — they're already in the IR from the fetch that just happened."},
+      {n:5, asm:"MOV RAX, [ALPHA]", mode:"Direct / Displacement",
+        hint:"ALPHA is a label the assembler already resolved to a fixed address. That address is encoded in the instruction's address field, not computed.",
+        lines:["IRAFout, MARin, READ, WMFC","MDRout, RAXin, END"],
+        note:"Same skeleton as Register Indirect — only the source of the address changed, from a register to the IR's address field."},
+      {n:6, asm:"MOV RSI, [0x1234]", mode:"Direct (literal address)",
+        hint:"This looks scary because the address is a raw literal instead of a label, but to the hardware, ALPHA and 0x1234 are indistinguishable.",
+        lines:["IRAFout, MARin, READ, WMFC","MDRout, RSIin, END"],
+        note:"Good checkpoint: the CPU never 'knows' about labels. By RTN time, ALPHA and 0x1234 are the same kind of encoded constant sitting in the IR's address field."},
+      {n:7, asm:"MOV RAX, [ALPHA+RSI]", mode:"Base + Displacement",
+        hint:"Two pieces have to be added before you even reach memory: a compile-time constant (ALPHA) and a run-time register (RSI). MAR only ever holds one, final address.",
+        lines:["RSIout, Yin","IRAFout, SelectY, ADD, Zin","Zout, MARin, READ, WMFC","MDRout, RAXin, END"],
+        note:"This is the pattern behind every 'complex' addressing mode: compute the effective address into Z first, THEN run the normal Memory Fetch skeleton starting from Zout."},
+      {n:8, asm:"MOV [ALPHA+RSI], RAX", mode:"Base + Displacement (store)",
+        hint:"Same address math as the load version above — but RAX is now the payload, not the destination.",
+        lines:["RSIout, Yin","IRAFout, SelectY, ADD, Zin","Zout, MARin","RAXout, MDRin, WRITE, WMFC, END"],
+        note:"The address is computed once and parked in MAR before RAX is even mentioned — MAR and MDR don't care what order they fill, only that both are full before WRITE completes."},
+      {n:9, asm:"PUSH RAX", mode:"Stack (implicit RSP)",
+        extension:"The standard MUX only offers the constant 4 (for PC+4). A 64-bit stack moves the pointer 8 bytes at a time, so this reviewer assumes a Select8 MUX input — the same idea as Select4, one size up.",
+        hint:"PUSH secretly does two things: (1) make room on the stack by moving RSP, (2) store the value at the new top. Which one has to happen first? And once Z holds the new RSP, how many registers can latch it in the same cycle?",
+        lines:["RSPout, Select8, SUB, Zin","Zout, RSPin, MARin","RAXout, MDRin, WRITE, WMFC, END"],
+        note:"Line 5 is an optimization in action: one 'out' can feed MANY 'in's. Z drives the bus once while RSP and MAR both latch the new stack address, saving a whole cycle."},
+      {n:10, asm:"POP RSI", mode:"Stack",
+        hint:"POP is PUSH in reverse. Compare it to the fetch phase: PC is read from, used as an address, and incremented — all at once. RSP can do the exact same trick.",
+        lines:["RSPout, MARin, READ, Select8, ADD, Zin","Zout, RSPin, WMFC","MDRout, RSIin, END"],
+        note:"Structurally IDENTICAL to the fetch phase, with RSP standing in for PC and 8 for 4. Read from [RSP] and compute RSP+8 in the same cycle, because both only need RSP on the bus once."},
+      {n:11, asm:"RET", mode:"Stack → Control Transfer",
+        hint:"RET is a POP that targets one very specific register. Which register controls where the CPU executes next?",
+        lines:["RSPout, MARin, READ, Select8, ADD, Zin","Zout, RSPin, WMFC","MDRout, PCin, END"],
+        note:"This is exactly POP PC — compare it line-for-line with problem 10. It only feels like a different instruction because the destination is invisible in the mnemonic."},
+    ]
+  },
+  {
+    id:"s2", n:2, title:"Standard & Complex Addressing, Arithmetic & Logic",
+    kicker:"Section 2",
+    blurb:"ALU operations, every escalation of x86's effective-address math, LEA's address-only twist, bitwise logic — and two instructions that simply cannot be encoded, which is its own kind of lesson.",
+    items:[
+      {n:12, asm:"INC RAX", mode:"Register, unary ALU",
+        hint:"Unary ALU ops only need one real operand off the bus, plus a fixed 'carry-in' trick to add 1 without a second operand register.",
+        lines:["RAXout, Set carry-in, ADD, Zin","Zout, RAXin, END"],
+        note:"Setting carry-in and adding is the standard trick for '+1' without ever touching the Y register."},
+      {n:13, asm:"SUB RSI, RDI", mode:"Register, binary ALU",
+        hint:"Subtraction is defined as bus − Y. So whichever operand you want SUBTRACTED goes into Y, and the one being subtracted FROM rides the bus.",
+        lines:["RDIout, Yin","RSIout, SelectY, SUB, Zin","Zout, RSIin, END"],
+        note:"The direction is fixed: subtraction is bus − Y. Load RDI into Y and put RSI on the bus, or you'll compute RDI − RSI instead of RSI − RDI."},
+      {n:14, asm:"SUB RAX, [ALPHA+RSI+RDI]", mode:"Base + Index + Displacement",
+        hint:"Build the effective address first (three pieces to add: RDI, RSI, ALPHA), fetch the memory operand, THEN subtract it from RAX. Remember: bus − Y.",
+        lines:["RDIout, Yin","RSIout, SelectY, ADD, Zin","Zout, Yin","IRAFout, SelectY, ADD, Zin","Zout, MARin, READ, WMFC","MDRout, Yin","RAXout, SelectY, SUB, Zin","Zout, RAXin, END"],
+        note:"Address math computes the effective address; the closing subtraction follows the standard ADD example. Y gets reused as scratch three separate times — that's exactly what a register named 'Y' is for."},
+      {n:15, asm:"ADD RCX, [ALPHA+RSI+RDI*4]", mode:"Base + (Index×Scale) + Displacement",
+        hint:"The MUX's constant input isn't just for '4' as in PC+4 — the same Select4 line can scale an index register before it's added in.",
+        lines:["RDIout, Select4, MUL, Zin","Zout, Yin","RSIout, SelectY, ADD, Zin","Zout, Yin","IRAFout, SelectY, ADD, Zin","Zout, MARin, READ, WMFC","MDRout, Yin","RCXout, SelectY, ADD, Zin","Zout, RCXin, END"],
+        note:"Address sequence followed by accumulate step. Scale happens FIRST, before the index is added to anything else — mirroring how x86 evaluates [base+index*scale+disp]."},
+      {n:16, asm:"SUB [ALPHA+RSI+RDX*4], RAX", mode:"Base + (Index×Scale) + Displacement, read-modify-write",
+        hint:"The destination is memory, so the address is computed once, used to READ the old value, then used AGAIN to WRITE the new one. Does anything overwrite MAR in between?",
+        lines:["RDXout, Select4, MUL, Zin","Zout, Yin","RSIout, SelectY, ADD, Zin","Zout, Yin","IRAFout, SelectY, ADD, Zin","Zout, MARin, READ, WMFC","RAXout, Yin","MDRout, SelectY, SUB, Zin","Zout, MDRin, WRITE, WMFC, END"],
+        note:"MAR is loaded ONCE and never disturbed, so the same address serves both the READ and the WRITE — no TEMP needed. Note the direction: MDR rides the bus and RAX sits in Y, giving [mem] − RAX, not the reverse."},
+      {n:17, asm:"LEA RAX, [ALPHA+ESI*4]", mode:"Index×Scale + Displacement, address-only",
+        hint:"LEA computes an effective address — but never dereferences it. Where does the address go instead of MAR?",
+        lines:["ESIout, Select4, MUL, Zin","Zout, Yin","IRAFout, SelectY, ADD, Zin","Zout, RAXin, END"],
+        note:"Compare to MOV EAX, [ALPHA+ESI*4]: identical address arithmetic, but the final line gates Z straight into RAX instead of into MAR. LEA stops one step short of a real memory access. (The problem set writes ESI here in an otherwise 64-bit list — kept as written.)"},
+      {n:18, asm:"LEA RAX, ALPHA", mode:"Direct, address-only",
+        hint:"No base, no index, no scale — just a bare label. What's the shortest path from 'address already sitting in the instruction' to 'address now sitting in a register'?",
+        lines:["IRAFout, RAXin, END"],
+        note:"One line. LEA with a pure direct address is just a Register Transfer from the IR's address field — the ALU never gets involved."},
+      {n:19, asm:"LEA RAX, [RBX]", mode:"Register Indirect, address-only",
+        hint:"The 'address' here is simply whatever RBX already contains, with nothing added. What does 'copy the address into RAX' look like at the gate level?",
+        lines:["RBXout, RAXin, END"],
+        note:"Mechanically identical to problem 1 (MOV RAX, RSI). Clean proof that LEA is fundamentally an address calculator, not a memory instruction — with no math to do, it degrades into a plain register copy."},
+      {n:20, asm:"XOR RAX, RBX", mode:"Register, binary ALU (logic)",
+        hint:"Same skeleton as SUB RSI, RDI above — only the ALU command line changes. The standard ALU diagram lists XOR right alongside ADD and SUB.",
+        lines:["RBXout, Yin","RAXout, SelectY, XOR, Zin","Zout, RAXin, END"],
+        note:"Logic ops reuse the exact same 3-line binary-ALU skeleton. The ALU's command lines pick the function; the gating pattern never changes."},
+      {n:21, asm:"AND RAX, RBX", mode:"Register, binary ALU (logic)",
+        hint:"Once you've done XOR above, this is a find-and-replace exercise — that's the point.",
+        lines:["RBXout, Yin","RAXout, SelectY, AND, Zin","Zout, RAXin, END"],
+        note:"Same skeleton, different ALU command — proof that the RTN 'shape' is set by addressing mode, not by which arithmetic or logic operation is requested."},
+      {n:22, asm:"OR RAX, RBX", mode:"Register, binary ALU (logic)",
+        hint:"Last one in the pattern — write it from memory before checking.",
+        lines:["RBXout, Yin","RAXout, SelectY, OR, Zin","Zout, RAXin, END"],
+        note:"Three instructions (XOR/AND/OR), one skeleton — this is why microprogramming is efficient: no new datapath per instruction, just a different ALU command in the same cycle slot."},
+      {n:23, asm:"XOR [RBX], RAX + RBX", mode:"— cannot be encoded —", invalid:true,
+        front:"Why can't this be turned into microcode at all?",
+        reason:"<strong>There is no single operand that means 'RAX plus RBX'.</strong> Every x86 operand resolves to exactly one register, one memory location, or one immediate — never a live sum of two registers.<br><br>The hardware reason is a central rule: <em>only one component may output to the bus at any instant.</em> <code>RAXout</code> and <code>RBXout</code> can never both be asserted on the same line, so there is physically no cycle in which a pre-summed 'RAX+RBX' could be gated onto the internal bus.<br><br><strong>The fix is two real instructions:</strong> <code>ADD RAX, RBX</code> first — which takes a full three-cycle ALU sequence (RBXout, Yin / RAXout, SelectY, ADD, Zin / Zout, RAXin) to park the sum in a real register — then <code>XOR [RBX], RAX</code>."},
+      {n:24, asm:"ADD [RBX], [RAX]", mode:"— cannot be encoded —", invalid:true,
+        front:"Why can't this be turned into microcode at all?",
+        reason:"<strong>Two memory operands, one MAR/MDR pair.</strong> The single-bus datapath has exactly ONE Memory Address Register and ONE Memory Data Register.<br><br>A true memory-to-memory add would need two independent addresses resolved and two independent values held at the same time, within one instruction. With one MAR and one MDR, loading the second address destroys the first — so the instruction cannot be sequenced, no matter how many cycles you're willing to spend.<br><br><strong>The fix is to stage through a register you control:</strong> <code>MOV RCX, [RAX]</code> then <code>ADD [RBX], RCX</code>.<br><br>This restriction is exactly why CISC instructions get decomposed into microcode in the first place — everything funnels back down to one address, one data value, one bus, per cycle."},
+    ]
+  },
+  {
+    id:"s3", n:3, title:"Special Math, Flag Traps & System States",
+    kicker:"Section 3",
+    blurb:"Implied operands, a dual-result instruction that outgrows the single-Z datapath, a flags-only ALU op, and a register the deck's diagram never quite draws.",
+    items:[
+      {n:25, asm:"IMUL CL", mode:"Implied operand (8-bit multiply)",
+        hint:"IMUL CL doesn't name a destination at all — x86's one-operand form always multiplies against AL and drops the wider result into AX. The destination is implied by convention, not spelled out.",
+        lines:["CLout, Yin","ALout, SelectY, MUL, Zin","Zout, AXin, END"],
+        note:"Same 3-line binary-ALU skeleton — the twist is that the CU gates hard-wired registers (AL in, AX out) that the assembly text never mentions."},
+      {n:26, asm:"IMUL ECX", extra:"(problem set writes 'IMUL C' — read here as the 32-bit form)", mode:"Implied operand (32-bit multiply)",
+        hint:"Widen problem 25 by one size. At 32 bits the product no longer fits in one register — which two registers does the standard IMUL example gate the result into?",
+        lines:["ECXout, Yin","EAXout, SelectY, MUL, Zin","Zout, EAXin, EDXin, END"],
+        note:"'C' isn't a real register name, so the problem set offers two readings. At 8 bits it's identical to problem 25; at 32 bits the result spans EDX:EAX, matching standard IMUL behavior. Either way the SHAPE is the same — only the widths and the number of destination registers change."},
+      {n:27, asm:"IMUL dword [ESI]", mode:"Register Indirect + implied operand",
+        hint:"A memory-operand version of the pattern above — fetch the memory operand into Y first, THEN multiply it against the implied accumulator.",
+        lines:["ESIout, MARin, READ, WMFC","MDRout, Yin","EAXout, SelectY, MUL, Zin","Zout, EAXin, EDXin, END"],
+        note:"The single best instruction here to check your own conventions against, since it's standard."},
+      {n:28, asm:"IMUL RAX, RBX, 10", mode:"Three-operand, immediate",
+        hint:"Unusual for x86: THREE operands, and RAX is never read as an input here — it's write-only. What does that mean for how many cycles you need?",
+        lines:["IRDFout, Yin","RBXout, SelectY, MUL, Zin","Zout, RAXin, END"],
+        note:"Because RAX is purely a destination in this form, there's no cycle where RAX is gated onto the bus — it only ever receives. Non-destructive multiply, three lines flat."},
+      {n:29, asm:"DIV RBX", mode:"Implied operand, dual-result",
+        extension:"One Z register can't hold a quotient AND a remainder at once. This reviewer assumes a second ALU result latch, gated by Zremout — flagged because standard diagrams often show only a single Z.",
+        hint:"DIV operates on the implied accumulator and always produces TWO results. The datapath you've used so far only ever gates ONE thing out of the ALU. What has to be added? (Remember: division is bus ÷ Y, same convention as bus − Y.)",
+        lines:["RBXout, Yin","RAXout, SelectY, DIV, Zin","Zout, RAXin","Zremout, RDXin, END"],
+        note:"The one instruction here that outgrows the deck's 'one ALU, one Z register' datapath. Real division hardware needs a second result path — exactly the kind of detail a single-output ALU diagram glosses over."},
+      {n:30, asm:"CMP RBX, 0x1F", mode:"Immediate, flags-only",
+        hint:"CMP is SUB with amnesia — same subtraction, same flags, but the numeric result is thrown away. Which line from a normal SUB do you simply not write?",
+        lines:["IRDFout, Yin","RBXout, SelectY, SUB, Zin, END"],
+        note:"Compare to problem 13: identical first two lines, but no third line gating Z back into a register. Flags are a side-effect of the ALU running, not of a write-back — so RBX stays untouched."},
+      {n:31, asm:"LAHF", mode:"Implied register (flags)",
+        extension:"Standard datapaths sometimes omit a FLAGS register with its own out-signal — though the CU clearly reads flag bits to branch. This reviewer treats FLAGS as one more gateable register.",
+        hint:"LAHF's whole job is to expose something the CU already tracks internally (the status flags) to a register the programmer can read. What's the simplest gating line that does that?",
+        lines:["FLAGSout, AHin, END"],
+        note:"One line, because it's really just a Register Transfer — the only twist is that the source is the status-flag latch instead of a general-purpose register."},
+    ]
+  },
+  {
+    id:"s4", n:4, title:"Control Transfer & Branching",
+    kicker:"Section 4",
+    blurb:"Absolute vs. relative addressing for jumps, flag-based vs. register-based conditions, and CALL/RET as PUSH/POP wearing a different name.",
+    items:[
+      {n:32, asm:"JMP L1", extra:"(assume L1 is an absolute address)", mode:"Absolute, unconditional",
+        hint:"L1's address is already sitting in the instruction. Unconditional means it happens no matter what — no flag check needed.",
+        lines:["IRAFout, PCin, END"],
+        note:"The simplest possible control transfer: overwrite PC directly, no arithmetic at all."},
+      {n:33, asm:"JMP L1", extra:"(assume L1 is a relative offset)", mode:"Relative, unconditional",
+        hint:"This time L1 is an OFFSET, not an address — so it has to be added to the CURRENT program counter, not written over it. Which IR field carries an offset rather than an address?",
+        lines:["IRDFout, Yin","PCout, SelectY, ADD, Zin","Zout, PCin, END"],
+        note:"Relative jumps reuse the same ALU-add skeleton as Base+Displacement addressing — PC is just another register being added to."},
+      {n:34, asm:"JC L1", mode:"Relative, conditional (Carry Flag)",
+        hint:"Conditional means: check a flag FIRST, on the same line as the first real step. If the condition fails, jump straight to END and let the PC+4 from the fetch phase stand unchanged.",
+        lines:["If (CF==0) then END<br>IRDFout, Yin","PCout, SelectY, ADD, Zin","Zout, PCin, END"],
+        note:"JC branches when Carry IS set — so the test written into microcode is the OPPOSITE: if CF==0, bail out. Always write the skip-condition, not the take-condition."},
+      {n:35, asm:"JNC L1", mode:"Relative, conditional (Carry Flag)",
+        hint:"JNC is the mirror image of JC — same relative-jump body, opposite bail-out condition.",
+        lines:["If (CF==1) then END<br>IRDFout, Yin","PCout, SelectY, ADD, Zin","Zout, PCin, END"],
+        note:"Every conditional Jcc pair (JC/JNC, JZ/JNZ, …) differs by exactly one inverted test — the branch BODY is always identical to the relative jump."},
+      {n:36, asm:"JCXZ L1", mode:"Relative, conditional (register test)",
+        extension:"JCXZ tests a whole register for zero, not a flag bit. That implies a zero-detect line on RCX feeding the CU — beyond typical flag-only conditions.",
+        hint:"There's no pre-computed flag for 'is RCX zero' here — the condition is on the register's VALUE. What has to bail out the branch instead?",
+        lines:["If (RCX != 0) then END<br>IRDFout, Yin","PCout, SelectY, ADD, Zin","Zout, PCin, END"],
+        note:"Structurally identical to JC/JNC — only the condition source changed, from a status flag to a direct zero-test on RCX."},
+      {n:37, asm:"JCXZ L2", mode:"Relative, conditional (register test)",
+        hint:"Same instruction, same mechanism as the one above — just a different offset baked into the IR's data field. Write this one from memory without scrolling back.",
+        lines:["If (RCX != 0) then END<br>IRDFout, Yin","PCout, SelectY, ADD, Zin","Zout, PCin, END"],
+        note:"A deliberate repeat: RTN never encodes WHICH label you're jumping to — that lives in the immediate offset inside the instruction word, not in the microcode's shape."},
+      {n:38, asm:"LOOP L3", mode:"Relative, conditional (decrement + test)",
+        extension:"Decrementing by exactly 1 needs a constant-1 MUX input typical diagrams might not show. This reviewer assumes Select1, the same way Select8 was assumed for the stack.",
+        hint:"LOOP quietly does TWO things: decrement RCX, then test it. Which has to finish before the branch condition can even be evaluated?",
+        lines:["RCXout, Select1, SUB, Zin","Zout, RCXin","If (RCX==0) then END<br>IRDFout, Yin","PCout, SelectY, ADD, Zin","Zout, PCin, END"],
+        note:"LOOP is 'DEC RCX' fused with a conditional relative jump. Once you can write both halves separately (problem 12's pattern, then problem 36's), LOOP is just gluing them together in the right order."},
+      {n:39, asm:"CALL L4", extra:"(assume L4 is an absolute address)", mode:"Absolute, control transfer + stack push",
+        hint:"CALL must do everything RET will later undo: push a return address BEFORE jumping. Which address counts as 'the return address' at this point in the cycle — and what is PC holding right now?",
+        lines:["RSPout, Select8, SUB, Zin","Zout, RSPin, MARin","PCout, MDRin, WRITE, WMFC","IRAFout, PCin, END"],
+        note:"PC already points at the instruction AFTER this CALL — the fetch phase incremented it before execution even began. That's exactly the address you want pushed, and exactly what RET (problem 11) pops back off."},
+      {n:40, asm:"CALL L3", extra:"(assume L3 is a relative offset)", mode:"Relative, control transfer + stack push",
+        hint:"This is CALL's push-the-return-address half (identical to problem 39) fused onto the relative-JMP half (problem 33). Assemble it from those two pieces before checking.",
+        lines:["RSPout, Select8, SUB, Zin","Zout, RSPin, MARin","PCout, MDRin, WRITE, WMFC","IRDFout, Yin","PCout, SelectY, ADD, Zin","Zout, PCin, END"],
+        note:"Forty problems in, and this is two earlier answers glued together: PUSH-the-return-address (problem 39) + relative JMP (problem 33). Microcode complexity almost always decomposes into patterns you've already written."},
+    ]
+  }
+];
+
+const TOTAL_ITEMS = SECTIONS.reduce((a,s)=>a+s.items.length,0);
+
+/* ======================================================================
+   STATE (persisted best-effort in localStorage — this is a standalone
+   file the learner keeps, not a sandboxed artifact)
+   ====================================================================== */
+let doneSet = new Set();
+try{
+  const saved = localStorage.getItem('microcode-reviewer-done');
+  if(saved) doneSet = new Set(JSON.parse(saved));
+}catch(e){ /* storage unavailable — fine, just won't persist */ }
+
+function markDone(n){
+  doneSet.add(n);
+  try{ localStorage.setItem('microcode-reviewer-done', JSON.stringify([...doneSet])); }catch(e){}
+  updateProgress();
+  const navEl = document.querySelector(`.nav-item a[data-n="${n}"]`);
+  if(navEl) navEl.classList.add('done');
+}
+
+function updateProgress(){
+  const pct = Math.round((doneSet.size/TOTAL_ITEMS)*100);
+  document.getElementById('progressFill').style.width = pct+"%";
+  document.getElementById('progressText').textContent = `${doneSet.size} / ${TOTAL_ITEMS} worked`;
+}
+
+/* ======================================================================
+   BUS DETECTION — infer which bus(es) a given RTN line touches
+   ====================================================================== */
+function detectBuses(codeHtml){
+  const code = codeHtml.replace(/<br>/g,' ');
+  const b = [];
+  const memAccess = /\bREAD\b|\bWRITE\b/i.test(code);
+  // MAR drives the external address bus during a memory transaction
+  if(memAccess || /MARin/.test(code)) b.push('addr');
+  // MDR is the CPU's window onto the external data bus
+  if(memAccess || /MDRin|MDRout/.test(code)) b.push('data');
+  // control bus carries READ/WRITE out and MFC back in; END is internal to the CU
+  if(memAccess || /WMFC/i.test(code)) b.push('ctrl');
+  return b;
+}
+
+/* ======================================================================
+   ANSWER CHECKING — order-independent, punctuation/whitespace-forgiving
+   comparison of the gating signals typed for a single cycle
+   ====================================================================== */
+function tokenizeLine(str){
+  return str
+    .replace(/<br\s*\/?>/gi, ',')
+    .replace(/\n/g, ',')
+    .split(',')
+    .map(t => t.replace(/[^a-z0-9\-]/gi, '').toLowerCase())
+    .filter(t => t.length > 0)
+    .sort();
+}
+function linesMatch(userText, canonicalHtml){
+  const a = tokenizeLine(userText);
+  const b = tokenizeLine(canonicalHtml);
+  if(a.length === 0) return false;
+  if(a.length !== b.length) return false;
+  return a.every((tok,i)=>tok===b[i]);
+}
+
+/* ======================================================================
+   RENDER
+   ====================================================================== */
+const app = document.getElementById('app');
+const navSections = document.getElementById('navSections');
+
+SECTIONS.forEach(section=>{
+  // nav
+  const navSec = document.createElement('div');
+  navSec.className='nav-section';
+  navSec.innerHTML = `<div class="nav-section-title">${section.kicker}</div><ul class="nav-list"></ul>`;
+  const ul = navSec.querySelector('ul');
+  section.items.forEach(item=>{
+    const li = document.createElement('li');
+    li.className='nav-item';
+    li.innerHTML = `<a href="#item-${item.n}" data-n="${item.n}" class="${item.invalid?'invalid':''}${doneSet.has(item.n)?' done':''}"><span class="num">${String(item.n).padStart(2,'0')}</span>${item.asm}</a>`;
+    ul.appendChild(li);
+  });
+  navSections.appendChild(navSec);
+
+  // section head
+  const head = document.createElement('div');
+  head.className='section-head';
+  head.id = section.id;
+  head.innerHTML = `<div class="kicker">${section.kicker} · ${section.items.length} instructions</div>
+    <h2>${section.title}</h2>
+    <p>${section.blurb}</p><hr>`;
+  app.appendChild(head);
+
+  section.items.forEach(item=>{
+    const card = document.createElement('div');
+    card.className = 'card' + (item.invalid ? ' invalid' : '');
+    card.id = `item-${item.n}`;
+
+    const badges = [];
+    if(item.invalid) badges.push(`<span class="badge invalid-badge">invalid</span>`);
+    if(item.extension) badges.push(`<span class="badge ext-badge" title="${item.extension.replace(/"/g,'&quot;')}">beyond the lecture</span>`);
+
+    card.innerHTML = `
+      <div class="card-top">
+        <div class="card-num">${String(item.n).padStart(2,'0')}</div>
+        <div class="card-title-wrap">
+          <div class="card-asm">${item.asm}${item.extra? ` <span style="font-size:12px;color:var(--ink-faint);font-weight:400;">${item.extra}</span>`:''}</div>
+          <div class="card-mode">${item.mode}</div>
+        </div>
+        ${badges.join('')}
+      </div>
+      ${item.extension ? `<div class="ext-note">⚡ ${item.extension}</div>` : ''}
+      <button class="hint-toggle" type="button">Show thinking prompt</button>
+      <div class="hint-body">${item.hint}</div>
+      ${item.invalid ? renderInvalidBlock(item) : renderStepper(item)}
+    `;
+    app.appendChild(card);
+
+    // wire up hint toggle
+    const hintBtn = card.querySelector('.hint-toggle');
+    const hintBody = card.querySelector('.hint-body');
+    hintBtn.addEventListener('click', ()=>{
+      hintBody.classList.toggle('show');
+      hintBtn.textContent = hintBody.classList.contains('show') ? 'Hide thinking prompt' : 'Show thinking prompt';
+    });
+
+    if(item.invalid){
+      wireInvalid(card, item);
+    } else {
+      wireStepper(card, item);
+    }
+  });
+});
+
+function renderStepper(item){
+  return `
+    <div class="stepper">
+      <div class="fetch-chip"><b>lines 1–3</b> fetch phase (see foundations above) — always the same</div>
+      <div class="stepper-controls">
+        <span class="cycle-count">0 / ${item.lines.length} cycles</span>
+        <button class="btn secondary step-reset" type="button">↻ Reset this instruction</button>
+      </div>
+      <div class="rtn-history"></div>
+      <div class="active-row"></div>
+      <div class="note-box">💡 ${item.note}</div>
+    </div>
+  `;
+}
+
+function renderInvalidBlock(item){
+  return `
+    <div class="stepper">
+      <div class="flashcard">
+        <div class="flash-front">${item.front}</div>
+        <button class="btn flash-btn" type="button">Flip card →</button>
+        <div class="invalid-reveal">${item.reason}</div>
+      </div>
+    </div>
+  `;
+}
+
+function buildHistoryLineHTML(idx, raw, status){
+  const buses = detectBuses(raw);
+  const tagHtml = ['addr','data','ctrl'].map(b=>{
+    const on = buses.includes(b);
+    const label = b==='addr'?'A':(b==='data'?'D':'C');
+    return `<span class="bus-tag ${on?'on-'+b:''}">${on?label:'·'}</span>`;
+  }).join('');
+  const statusPill = status === 'correct'
+    ? `<span class="tag-pill correct">✓ correct</span>`
+    : `<span class="tag-pill revealed">⟲ revealed</span>`;
+  return `<span class="ln">${idx+4}.</span><span class="code">${raw}</span><span class="bus-tags">${tagHtml}${statusPill}</span>`;
+}
+
+function wireStepper(card, item){
+  let idx = 0;
+  let attempts = 0;
+  const historyWrap = card.querySelector('.rtn-history');
+  const activeRow = card.querySelector('.active-row');
+  const counter = card.querySelector('.cycle-count');
+  const resetBtn = card.querySelector('.step-reset');
+  const noteBox = card.querySelector('.note-box');
+
+  function renderActive(){
+    attempts = 0;
+    if(idx >= item.lines.length){
+      activeRow.innerHTML = '';
+      counter.textContent = `${item.lines.length} / ${item.lines.length} cycles`;
+      noteBox.classList.add('show');
+      markDone(item.n);
+      return;
+    }
+    counter.textContent = `${idx} / ${item.lines.length} cycles`;
+    activeRow.innerHTML = `
+      <div class="rtn-input-row">
+        <span class="ln">${idx+4}.</span>
+        <input type="text" class="rtn-input" placeholder="type this cycle's gating signals, comma-separated…" autocomplete="off" spellcheck="false">
+        <button class="btn check-btn" type="button">Check</button>
+      </div>
+      <div class="feedback-msg"></div>
+      <div class="row-actions"><button class="btn secondary reveal-line-btn" type="button">I don't know — show me</button></div>
+    `;
+    const input = activeRow.querySelector('.rtn-input');
+    const checkBtn = activeRow.querySelector('.check-btn');
+    const revealBtn = activeRow.querySelector('.reveal-line-btn');
+    const feedback = activeRow.querySelector('.feedback-msg');
+
+    function commit(status){
+      historyWrap.insertAdjacentHTML('beforeend', `<div class="rtn-line ${status==='correct'?'was-correct':'was-revealed'}">${buildHistoryLineHTML(idx, item.lines[idx], status)}</div>`);
+      idx++;
+      renderActive();
+    }
+
+    function doCheck(){
+      const val = input.value.trim();
+      if(!val) return;
+      if(linesMatch(val, item.lines[idx])){
+        input.classList.remove('wrong'); input.classList.add('right');
+        feedback.className = 'feedback-msg correct';
+        feedback.textContent = '✅ Correct — locking that cycle in.';
+        input.disabled = true; checkBtn.disabled = true; revealBtn.disabled = true;
+        setTimeout(()=>commit('correct'), 450);
+      } else {
+        attempts++;
+        input.classList.remove('right'); input.classList.add('wrong');
+        feedback.className = 'feedback-msg incorrect';
+        feedback.textContent = attempts >= 2
+          ? '✗ Not quite. Check every gating signal AND the order of out/in — stuck? tap "show me" below.'
+          : '✗ Not quite — try again.';
+        input.select();
+      }
+    }
+
+    checkBtn.addEventListener('click', doCheck);
+    input.addEventListener('keydown', (e)=>{ if(e.key === 'Enter'){ e.preventDefault(); doCheck(); } });
+    revealBtn.addEventListener('click', ()=>{
+      input.value = item.lines[idx].replace(/<br\s*\/?>/gi, ', ');
+      input.disabled = true; checkBtn.disabled = true; revealBtn.disabled = true;
+      feedback.className = 'feedback-msg revealed-msg';
+      feedback.textContent = '⟲ Revealed — this one\'s logged as reviewed, not solved.';
+      setTimeout(()=>commit('revealed'), 500);
+    });
+    input.focus();
+  }
+
+  function reset(){
+    idx = 0; attempts = 0;
+    historyWrap.innerHTML = '';
+    noteBox.classList.remove('show');
+    doneSet.delete(item.n);
+    try{ localStorage.setItem('microcode-reviewer-done', JSON.stringify([...doneSet])); }catch(e){}
+    updateProgress();
+    const navEl = document.querySelector(`.nav-item a[data-n="${item.n}"]`);
+    if(navEl) navEl.classList.remove('done');
+    renderActive();
+  }
+
+  resetBtn.addEventListener('click', reset);
+  renderActive();
+}
+
+function wireInvalid(card, item){
+  const btn = card.querySelector('.flash-btn');
+  const box = card.querySelector('.invalid-reveal');
+  btn.addEventListener('click', ()=>{
+    const open = box.classList.toggle('show');
+    btn.textContent = open ? '↩ Flip back' : 'Flip card →';
+    if(open) markDone(item.n);
+  });
+}
+
+updateProgress();
+
+/* ======================================================================
+   active nav highlight on scroll
+   ====================================================================== */
+const navLinks = [...document.querySelectorAll('.nav-item a')];
+const cardEls = [...document.querySelectorAll('.card')];
+const io = new IntersectionObserver((entries)=>{
+  entries.forEach(entry=>{
+    if(entry.isIntersecting){
+      const id = entry.target.id;
+      const n = id.replace('item-','');
+      navLinks.forEach(a=>a.classList.remove('active'));
+      const active = document.querySelector(`.nav-item a[data-n="${n}"]`);
+      if(active){
+        active.classList.add('active');
+        active.scrollIntoView({block:'nearest'});
+      }
+    }
+  });
+},{ rootMargin: '-10% 0px -75% 0px' });
+cardEls.forEach(c=>io.observe(c));
+</script>
+</body>
+</html>
