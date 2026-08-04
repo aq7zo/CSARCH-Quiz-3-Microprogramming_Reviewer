@@ -60,7 +60,7 @@ body{
   position:sticky; top:0; height:100vh; overflow-y:auto;
   background:var(--bg-panel-2);
   border-right:1px solid var(--border);
-  padding:22px 0 40px;
+  padding:22px 0 0;
 }
 .sidebar::-webkit-scrollbar{width:8px;}
 .sidebar::-webkit-scrollbar-thumb{background:rgba(232,237,242,0.12); border-radius:4px;}
@@ -112,17 +112,12 @@ body{
 .nav-item a.invalid .num{ color:var(--danger); }
 .nav-item a.done::after{ content:"●"; font-size:6px; color:var(--ok); margin-left:auto; }
 
+.sidebar-footer{ margin-top:22px; padding:22px; border-top:1px solid var(--border); }
+.sidebar-footer .reset-all{ width:100%; text-align:center; font-size:11.5px; padding:9px 10px; }
+.sidebar-footer .reset-all:hover{ border-color:var(--danger); color:var(--danger); background:rgba(0,0,0,0); }
+
 /* ---------- main ---------- */
 main{ position:relative; padding: 48px clamp(20px,5vw,72px) 120px; max-width:980px; }
-
-/* the signature bus rail */
-.bus-rail{
-  position:absolute; left:clamp(0px,2.2vw,26px); top:340px; bottom:80px; width:34px;
-  display:flex; justify-content:space-between;
-}
-.bus-rail .wire{ position:relative; width:2px; background:rgba(232,237,242,0.08); border-radius:2px; }
-.bus-rail .wire[data-b="addr"]{ background: linear-gradient(rgba(232,237,242,0.08), rgba(232,237,242,0.08)); }
-@media (max-width: 780px){ .bus-rail{ display:none; } }
 
 header.hero{ margin-bottom:56px; }
 .hero-eyebrow{
@@ -341,30 +336,26 @@ footer{
         <div>Made by: B.E. Campo &amp; J.O. Morgan</div>
       </div>
       <div class="eyebrow">Control Unit</div>
-      <h1>Microcode Reviewer</h1>
-      <p>Assembly → gate-level RTN, one instruction at a time.</p>
+      <h1>Microprograming Reviewer</h1>
     </div>
     <div class="progress-wrap">
       <div class="progress-track"><div class="progress-fill" id="progressFill"></div></div>
-      <div class="progress-label"><span id="progressText">0 / 40 worked</span><span>reset ↻</span></div>
+      <div class="progress-label"><span id="progressText">0 / 40 worked</span></div>
     </div>
     <div id="navSections"></div>
+    <div class="sidebar-footer">
+      <button class="btn secondary reset-all" id="resetAllBtn" type="button">↻ Reset all progress</button>
+    </div>
   </nav>
 
   <!-- ============ MAIN ============ -->
   <main>
-    <div class="bus-rail" aria-hidden="true">
-      <div class="wire" data-b="addr"></div>
-      <div class="wire" data-b="data"></div>
-      <div class="wire" data-b="ctrl"></div>
-    </div>
-
     <header class="hero">
       <div class="hero-eyebrow">Forward Microcode Translation · Worked Reviewer</div>
-      <h1>From <em>x86-ish assembly</em><br>to gate-level RTN.</h1>
-      <p class="lede">You already read assembly fluently. This reviewer teaches the missing layer underneath it: the exact sequence of register-transfer gating signals a single-bus control unit fires, cycle by cycle, to actually carry out each instruction.</p>
-      <p class="sub-lede">Built directly on the Von Neumann datapath model — shared internal bus, MAR/MDR/Y/Z, and the four basic micro-operations. 40 instructions, worked one at a time, hardest ones last in each section.</p>
-      <p class="sub-lede" style="margin-top:8px;">You type each cycle's gating signals yourself. It's flagged <strong style="color:var(--ok);">correct</strong> or <strong style="color:var(--danger);">not quite</strong> before you can move to the next line — signal order within a cycle doesn't matter (they all fire at once), but every signal name does. Two instructions in Section&nbsp;2 can't be encoded at all; those are flashcards, not exercises.</p>
+      <h1><em>Microprogramming Fundamentals:</em><br>An Assembly Walkthrough</h1>
+      <p class="lede">A drill set for translating x86-style assembly into register-transfer notation: the gating signals a single-bus control unit asserts, cycle by cycle, to execute each instruction.</p>
+      <p class="sub-lede">Based on the Von Neumann single-bus datapath — shared internal bus, MAR/MDR/Y/Z, and the four basic micro-operations. 40 instructions, ordered simplest to hardest within each section.</p>
+      <p class="sub-lede" style="margin-top:8px;">You enter each cycle's gating signals; each line is marked <strong style="color:var(--ok);">correct</strong> or <strong style="color:var(--danger);">not quite</strong> before the next one unlocks. Signal order within a cycle is not graded — all signals in a cycle fire at once — but signal names are.</p>
 
       <div class="legend">
         <span class="item"><span class="dot on-addr" style="border-color:var(--trace); color:var(--trace);">A</span> address bus active</span>
@@ -546,7 +537,7 @@ const SECTIONS = [
       {n:27, asm:"IMUL dword [ESI]", mode:"Register Indirect + implied operand",
         hint:"A memory-operand version of the pattern above — fetch the memory operand into Y first, THEN multiply it against the implied accumulator.",
         lines:["ESIout, MARin, READ, WMFC","MDRout, Yin","EAXout, SelectY, MUL, Zin","Zout, EAXin, EDXin, END"],
-        note:"The single best instruction here to check your own conventions against, since it's standard."},
+        note:"The single best instruction here to check your own conventions against, since it's standard. The <b>EDXin</b> on the last line follows standard x86 multiplication rules: a 32-bit multiply (IMUL dword) of two 32-bit values can produce a result up to 64 bits wide. Since one general-purpose register only holds 32 bits, the 64-bit result in Z is split across two — EDX takes the upper 32 bits, EAX the lower 32."},
       {n:28, asm:"IMUL RAX, RBX, 10", mode:"Three-operand, immediate",
         hint:"Unusual for x86: THREE operands, and RAX is never read as an input here — it's write-only. What does that mean for how many cycles you need?",
         lines:["IRDFout, Yin","RBXout, SelectY, MUL, Zin","Zout, RAXin, END"],
@@ -796,7 +787,9 @@ function wireStepper(card, item){
   const resetBtn = card.querySelector('.step-reset');
   const noteBox = card.querySelector('.note-box');
 
-  function renderActive(){
+  // focusInput is only set on interaction-driven re-renders — focusing during the
+  // initial render would scroll the page to the last card that got wired
+  function renderActive(focusInput){
     attempts = 0;
     if(idx >= item.lines.length){
       activeRow.innerHTML = '';
@@ -823,7 +816,7 @@ function wireStepper(card, item){
     function commit(status){
       historyWrap.insertAdjacentHTML('beforeend', `<div class="rtn-line ${status==='correct'?'was-correct':'was-revealed'}">${buildHistoryLineHTML(idx, item.lines[idx], status)}</div>`);
       idx++;
-      renderActive();
+      renderActive(true);
     }
 
     function doCheck(){
@@ -855,7 +848,7 @@ function wireStepper(card, item){
       feedback.textContent = '⟲ Revealed — this one\'s logged as reviewed, not solved.';
       setTimeout(()=>commit('revealed'), 500);
     });
-    input.focus();
+    if(focusInput) input.focus();
   }
 
   function reset(){
@@ -867,7 +860,7 @@ function wireStepper(card, item){
     updateProgress();
     const navEl = document.querySelector(`.nav-item a[data-n="${item.n}"]`);
     if(navEl) navEl.classList.remove('done');
-    renderActive();
+    renderActive(true);
   }
 
   resetBtn.addEventListener('click', reset);
@@ -885,6 +878,15 @@ function wireInvalid(card, item){
 }
 
 updateProgress();
+
+/* reset every instruction at once — clear storage, then reload so each
+   stepper rebuilds from cycle 0 */
+document.getElementById('resetAllBtn').addEventListener('click', ()=>{
+  if(!confirm('Reset all progress? Every instruction goes back to cycle 0.')) return;
+  doneSet.clear();
+  try{ localStorage.removeItem('microcode-reviewer-done'); }catch(e){}
+  location.reload();
+});
 
 /* ======================================================================
    active nav highlight on scroll
