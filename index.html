@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Microcode Reviewer — Assembly to RTN</title>
+<title>CSARCH2 QUIZ3 Reviewer</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600;700&family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Sans+Condensed:wght@500;600;700&display=swap" rel="stylesheet">
@@ -159,11 +159,18 @@ html.nav-open .nav-backdrop{ opacity:1; pointer-events:auto; }
 .nav-item a .num{
   font-family:var(--font-mono); font-size:10.5px; color:var(--ink-faint); width:20px; flex-shrink:0;
 }
+.nav-item a .nav-label{ overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+/* short method label so e.g. "0100 × 1011" reads differently under Booth vs pencil */
+.nav-item a .nav-tag{
+  margin-left:auto; padding-left:8px; flex-shrink:0;
+  font-family:var(--font-mono); font-size:9px; letter-spacing:.04em; color:var(--ink-faint);
+}
 .nav-item a:hover{ background:rgba(201,138,75,0.08); color:var(--ink); }
 .nav-item a.active{ background:rgba(242,177,52,0.09); color:var(--ink); border-left-color:var(--signal); }
+.nav-item a.active .nav-tag{ color:var(--trace); }
 .nav-item a.done .num{ color:var(--ok); }
 .nav-item a.invalid .num{ color:var(--danger); }
-.nav-item a.done::after{ content:"●"; font-size:6px; color:var(--ok); margin-left:auto; }
+.nav-item a.done::after{ content:"●"; font-size:6px; color:var(--ok); margin-left:6px; }
 
 .sidebar-footer{ margin-top:22px; padding:22px; border-top:1px solid var(--border); }
 .sidebar-footer .reset-all{ width:100%; text-align:center; font-size:11.5px; padding:9px 10px; }
@@ -376,6 +383,68 @@ footer{
   color:var(--ink-faint); font-size:12.5px; font-family:var(--font-mono);
 }
 
+/* ======================================================================
+   CALC CARDS — arithmetic traces (multiplication / division)
+   ====================================================================== */
+.nav-part{
+  font-family:var(--font-display); font-size:10.5px; font-weight:700; letter-spacing:.15em;
+  text-transform:uppercase; color:var(--signal);
+  padding:20px 22px 0; margin-top:10px; border-top:1px solid var(--border);
+}
+#navSections > .nav-part:first-child{ border-top:none; margin-top:0; padding-top:6px; }
+
+/* algorithm reference folded into a section header */
+.primer{ margin:20px 0 4px; }
+.primer summary{ font-size:14.5px; padding:14px 18px; }
+.primer .foundation-body{ padding:0 18px 18px; }
+
+/* the "given" registers a problem starts from */
+.setup-chips{ display:flex; flex-wrap:wrap; gap:8px; margin-bottom:16px; }
+.setup-chip{
+  font-family:var(--font-mono); font-size:11.5px; color:var(--ink);
+  border:1px solid var(--border); border-radius:7px; padding:6px 10px; background:var(--bg-panel-2);
+}
+.setup-chip b{ color:var(--ink-faint); font-weight:500; margin-right:7px; }
+
+.calc-history{ display:flex; flex-direction:column; gap:8px; }
+.calc-history:not(:empty){ margin-bottom:14px; }
+.calc-step-label{
+  font-family:var(--font-mono); font-size:11px; letter-spacing:.1em; text-transform:uppercase;
+  color:var(--signal); margin-bottom:10px;
+}
+.calc-row{ display:flex; flex-wrap:wrap; gap:10px; align-items:flex-end; }
+.calc-field{ display:flex; flex-direction:column; gap:5px; flex:1 1 160px; min-width:0; }
+.calc-field .fk{ font-family:var(--font-mono); font-size:10.5px; color:var(--ink-faint); }
+.calc-input{
+  font-family:var(--font-mono); font-size:13.5px; width:100%;
+  background:var(--bg-panel-2); border:1px solid var(--border); border-radius:8px;
+  padding:10px 12px; color:var(--ink);
+}
+.calc-input::placeholder{ color:var(--ink-faint); opacity:.55; }
+.calc-input:focus{ outline:none; border-color:var(--signal); box-shadow:0 0 0 2px rgba(242,177,52,0.15); }
+.calc-input.wrong{ border-color:var(--danger); }
+.calc-input.right{ border-color:var(--ok); }
+.calc-input:disabled{ opacity:.75; }
+.calc-row .check-btn{ flex:0 0 auto; }
+
+.calc-hist{
+  background:var(--bg-panel-2); border:1px solid var(--border); border-radius:8px;
+  padding:10px 14px; opacity:0; transform:translateY(4px); animation:reveal .35s ease forwards;
+}
+.calc-hist-top{ display:grid; grid-template-columns:104px 1fr auto; align-items:center; gap:12px; }
+.calc-hist .ln{
+  font-family:var(--font-mono); font-size:10.5px; color:var(--ink-faint);
+  text-transform:uppercase; letter-spacing:.06em;
+}
+.calc-hist .code{ display:flex; flex-wrap:wrap; gap:5px 16px; font-family:var(--font-mono); font-size:14px; color:var(--ink); }
+.calc-hist .kv i{ font-style:normal; color:var(--trace); margin-right:6px; font-size:11.5px; }
+.calc-hist .why{
+  margin-top:9px; padding-top:9px; border-top:1px dashed var(--border);
+  font-size:12.5px; line-height:1.6; color:var(--ink-faint);
+}
+.calc-hist .why code{ font-family:var(--font-mono); color:var(--ink-dim); font-size:12px; }
+.calc-hist .why b{ color:var(--ink-dim); font-weight:600; }
+
 /* legend chip row used at top of main */
 .legend{ display:flex; gap:16px; flex-wrap:wrap; margin-top:26px; }
 .legend .item{ display:flex; align-items:center; gap:7px; font-family:var(--font-mono); font-size:11.5px; color:var(--ink-faint); }
@@ -416,6 +485,16 @@ footer{
 
   /* input owns a full row; 16px keeps iOS Safari from zooming the page on focus */
   .rtn-input{ min-width:0; flex:1 1 100%; font-size:16px; }
+
+  /* calc traces: label and status share a row, the values get their own */
+  .calc-hist-top{ grid-template-columns:1fr auto; gap:8px; }
+  .calc-hist-top .ln{ grid-row:1; grid-column:1; }
+  .calc-hist-top .st{ grid-row:1; grid-column:2; }
+  .calc-hist-top .code{ grid-row:2; grid-column:1 / -1; font-size:13px; margin-top:2px; }
+  .calc-field{ flex:1 1 100%; }
+  .calc-input{ font-size:16px; }
+  .calc-row .check-btn{ width:100%; }
+  .setup-chip{ font-size:11px; }
 }
 
 @media (max-width: 600px){
@@ -458,12 +537,13 @@ try{
       <div class="credit">
         <div>Made by: B.E. Campo &amp; J.O. Morgan</div>
       </div>
-      <div class="eyebrow">Control Unit</div>
-      <h1>Microprograming Reviewer</h1>
+      <div class="eyebrow">Control Unit · ALU</div>
+      <h1>CSARCH2 QUIZ3 Reviewer</h1>
+      <p style="font-size:11.5px;margin-top:4px;">Microprogramming · Multiplication · Division</p>
     </div>
     <div class="progress-wrap">
       <div class="progress-track"><div class="progress-fill" id="progressFill"></div></div>
-      <div class="progress-label"><span id="progressText">0 / 40 worked</span></div>
+      <div class="progress-label"><span id="progressText">0 / 69 worked</span></div>
     </div>
     <div id="navSections"></div>
     <div class="sidebar-footer">
@@ -475,29 +555,30 @@ try{
   <main>
     <div class="mobile-bar">
       <button class="nav-open-btn" id="navOpenBtn" type="button" aria-controls="sidebar" aria-expanded="false" aria-label="Open navigation">☰</button>
-      <span class="bar-title">Microprograming Reviewer</span>
-      <span class="bar-count" id="progressTextMobile">0 / 40</span>
+      <span class="bar-title">CSARCH2 QUIZ3 Reviewer</span>
+      <span class="bar-count" id="progressTextMobile">0 / 69</span>
       <div class="mobile-progress" id="progressFillMobile"></div>
     </div>
 
     <header class="hero">
-      <div class="hero-eyebrow">Forward Microcode Translation · Worked Reviewer</div>
-      <h1><em>Microprogramming Fundamentals:</em><br>An Assembly Walkthrough</h1>
-      <p class="lede">A drill set for translating x86-style assembly into register-transfer notation: the gating signals a single-bus control unit asserts, cycle by cycle, to execute each instruction.</p>
-      <p class="sub-lede">Based on the Von Neumann single-bus datapath — shared internal bus, MAR/MDR/Y/Z, and the four basic micro-operations. 40 instructions, ordered simplest to hardest within each section.</p>
-      <p class="sub-lede" style="margin-top:8px;">You enter each cycle's gating signals; each line is marked <strong style="color:var(--ok);">correct</strong> or <strong style="color:var(--danger);">not quite</strong> before the next one unlocks. Signal order within a cycle is not graded — all signals in a cycle fire at once — but signal names are.</p>
+      <div class="hero-eyebrow">Microprogramming · Module 9 · Module 10 · Worked Reviewer</div>
+      <h1><em>Control Unit &amp; ALU:</em><br>A Step-by-Step Walkthrough</h1>
+      <p class="lede">Three drill sets, one workflow: translate x86-style assembly into register-transfer notation, then run the ALU's own multiplication and division algorithms by hand, register by register.</p>
+      <p class="sub-lede"><strong>Microprogramming</strong> (40 instructions) — the gating signals a single-bus Von Neumann control unit asserts, cycle by cycle. <strong>Module 9, Multiplication</strong> (19 problems) — pencil-and-paper, Booth's, extended Booth's and the sequential circuit binary multiplier. <strong>Module 10, Division</strong> (10 problems) — restoring and non-restoring, traced pass by pass.</p>
+      <p class="sub-lede" style="margin-top:8px;">You type each answer yourself; every line is marked <strong style="color:var(--ok);">correct</strong> or <strong style="color:var(--danger);">not quite</strong> before the next one unlocks, and each committed line explains why it came out that way. Progress is saved in this browser.</p>
 
       <div class="legend">
         <span class="item"><span class="dot on-addr" style="border-color:var(--trace); color:var(--trace);">A</span> address bus active</span>
         <span class="item"><span class="dot on-data" style="border-color:#7fb0c9; color:#7fb0c9;">D</span> data bus active</span>
         <span class="item"><span class="dot on-ctrl" style="border-color:var(--signal); color:var(--signal);">C</span> control signal fires</span>
         <span class="item"><span class="dot">·</span> internal bus only</span>
+        <span class="item" style="color:var(--ink-faint);">— bus tags apply to the microprogramming cards</span>
       </div>
     </header>
 
     <!-- ============ FOUNDATIONS ============ -->
     <details class="foundation" id="foundations" open>
-      <summary>Foundations recap — read this before line 1 <span class="tag">5 min</span></summary>
+      <summary>Microprogramming foundations — read this before Section 1 <span class="tag">5 min</span></summary>
       <div class="foundation-body">
         <div class="foundation-grid">
           <div class="f-block">
@@ -544,7 +625,7 @@ try{
 const SECTIONS = [
   {
     id: "s1", n:1, title:"Data Movement & Stack Operations",
-    kicker:"Section 1",
+    kicker:"Section 1", part:"Microprogramming · Control Unit",
     blurb:"Every load/store mode, plus the stack operations never covered — PUSH, POP and RET, built from the same Memory Fetch / Memory Store skeletons.",
     items: [
       {n:1, asm:"MOV RAX, RSI", mode:"Register → Register",
@@ -596,7 +677,7 @@ const SECTIONS = [
   },
   {
     id:"s2", n:2, title:"Standard & Complex Addressing, Arithmetic & Logic",
-    kicker:"Section 2",
+    kicker:"Section 2", part:"Microprogramming · Control Unit",
     blurb:"ALU operations, every escalation of x86's effective-address math, LEA's address-only twist, bitwise logic — and two instructions that simply cannot be encoded, which is its own kind of lesson.",
     items:[
       {n:12, asm:"INC RAX", mode:"Register, unary ALU",
@@ -653,7 +734,7 @@ const SECTIONS = [
   },
   {
     id:"s3", n:3, title:"Special Math, Flag Traps & System States",
-    kicker:"Section 3",
+    kicker:"Section 3", part:"Microprogramming · Control Unit",
     blurb:"Implied operands, a dual-result instruction that outgrows the single-Z datapath, a flags-only ALU op, and a register the deck's diagram never quite draws.",
     items:[
       {n:25, asm:"IMUL CL", mode:"Implied operand (8-bit multiply)",
@@ -690,7 +771,7 @@ const SECTIONS = [
   },
   {
     id:"s4", n:4, title:"Control Transfer & Branching",
-    kicker:"Section 4",
+    kicker:"Section 4", part:"Microprogramming · Control Unit",
     blurb:"Absolute vs. relative addressing for jumps, flag-based vs. register-based conditions, and CALL/RET as PUSH/POP wearing a different name.",
     items:[
       {n:32, asm:"JMP L1", extra:"(assume L1 is an absolute address)", mode:"Absolute, unconditional",
@@ -731,6 +812,1763 @@ const SECTIONS = [
         hint:"This is CALL's push-the-return-address half (identical to problem 39) fused onto the relative-JMP half (problem 33). Assemble it from those two pieces before checking.",
         lines:["RSPout, Select8, SUB, Zin","Zout, RSPin, MARin","PCout, MDRin, WRITE, WMFC","IRDFout, Yin","PCout, SelectY, ADD, Zin","Zout, PCin, END"],
         note:"Forty problems in, and this is two earlier answers glued together: PUSH-the-return-address (problem 39) + relative JMP (problem 33). Microcode complexity almost always decomposes into patterns you've already written."},
+    ]
+  },
+  {
+    id:"s5",
+    n:5,
+    part:"Module 9 · Multiplication",
+    engine:"calc",
+    title:"Booth & Extended Booth Recoding",
+    kicker:"Section 5",
+    blurb:"Recoding is the whole of Booth's algorithm — once the multiplier is rewritten as signed digits, the multiplication itself is ordinary long addition. Eight drills on the two recoding rules and the preparation step each one needs.",
+    primer:"\n<div class=\"f-block\">\n  <h3>Booth's recoding</h3>\n  <p>Append one <b>0</b> to the right of the LSb, then read overlapping bit pairs (b<sub>i</sub>, b<sub>i-1</sub>) from the right:</p>\n  <div class=\"gate-demo\">00 → 0 &nbsp; 01 → +1 &nbsp; 10 → −1 &nbsp; 11 → 0</div>\n  <p style=\"margin-top:8px;\">An <i>n</i>-bit multiplier gives <i>n</i> digits, so <i>n</i> summands.</p>\n  <h3>Extended Booth's (bit-pair recoding)</h3>\n  <p>Sign-extend to an <b>even</b> bit count first, then append the 0, then read three-bit windows stepping two places:</p>\n  <div class=\"gate-demo\">000 → 0 &nbsp; 001 → +1 &nbsp; 010 → +1 &nbsp; 011 → +2<br>100 → −2 &nbsp; 101 → −1 &nbsp; 110 → −1 &nbsp; 111 → 0</div>\n  <p style=\"margin-top:8px;\">Halves the number of summands.</p>\n</div>\n<div class=\"f-block\">\n  <h3>What each digit multiplies out to</h3>\n  <ul>\n    <li><code>0</code> × m = all zeros</li>\n    <li><code>+1</code> × m = m</li>\n    <li><code>−1</code> × m = 2's complement of m</li>\n    <li><code>+2</code> × m = m with a 0 appended (m0)</li>\n    <li><code>−2</code> × m = [2's complement of m] with a 0 appended</li>\n  </ul>\n  <h3>Writing summands</h3>\n  <p>Every row is sign-extended to the full <i>m+n</i> product width and shifted left by its position — one place per digit for Booth's, <b>two</b> places per digit for extended Booth's.</p>\n  <p>This reviewer accepts either the lecture's shortened row (the leading portion, as written on the slides) or the full-width row with its trailing shift zeros spelled out.</p>\n</div>",
+    primerTitle:"Recoding rules — the two tables you must know cold",
+    items:[
+      {
+        n:41,
+        asm:"Booth-recode 0101",
+        mode:"Booth's algorithm · multiplier 5",
+        hint:"Two moves only: bolt a 0 onto the right end, then read overlapping pairs. Ask yourself what pair sits at the far right once that 0 is there.",
+        setup:[
+          {k:"multiplier", v:"0101"},
+          {k:"value", v:"5"}
+        ],
+        steps:[
+          {
+            label:"1. prepare",
+            fields:[
+              {k:"bits after appending 0", t:"bin", a:"01010"}
+            ],
+            why:"Booth's algorithm never sign-extends — it only appends one 0 to the right of the LSb, because \"the bit to the right of the LSb is nothing, i.e. equal to 0.\""
+          },
+          {
+            label:"2. recode",
+            fields:[
+              {k:"Booth digits", t:"recode", a:"+1-1+1-1"}
+            ],
+            why:"Pair the bits (b<sub>i</sub>, b<sub>i-1</sub>) walking left: 00 → 0, 01 → +1, 10 → −1, 11 → 0. Each pair overlaps the previous one by one bit, so 4 bits give 4 digits."
+          }
+        ],
+        note:"The canonical worked example. Notice the recoding alternates +1/−1 — Booth's turns a run of alternating bits into the worst case, one summand per bit, which is exactly the case extended Booth's is designed to fix."
+      },
+      {
+        n:42,
+        asm:"Booth-recode 1011",
+        mode:"Booth's algorithm · multiplier −5",
+        hint:"A negative multiplier. Booth's whole selling point is that you do NOT treat it specially — the same pairing rule handles it, and no step-4 correction row is ever needed.",
+        setup:[
+          {k:"multiplier", v:"1011"},
+          {k:"value", v:"−5"}
+        ],
+        steps:[
+          {
+            label:"1. prepare",
+            fields:[
+              {k:"bits after appending 0", t:"bin", a:"10110"}
+            ],
+            why:"Booth's algorithm never sign-extends — it only appends one 0 to the right of the LSb, because \"the bit to the right of the LSb is nothing, i.e. equal to 0.\""
+          },
+          {
+            label:"2. recode",
+            fields:[
+              {k:"Booth digits", t:"recode", a:"-1+10-1"}
+            ],
+            why:"Pair the bits (b<sub>i</sub>, b<sub>i-1</sub>) walking left: 00 → 0, 01 → +1, 10 → −1, 11 → 0. Each pair overlaps the previous one by one bit, so 4 bits give 4 digits."
+          }
+        ],
+        note:"Compare this to the pencil-and-paper version of the same multiplier: there you needed a separate 2's-complement correction row. Booth's absorbs the sign into the −1 digit at the top, which is why it \"treats positive and negative multipliers uniformly.\""
+      },
+      {
+        n:43,
+        asm:"Booth-recode 01101",
+        mode:"Booth's algorithm · multiplier 13",
+        hint:"Five bits in, five digits out. Watch the 11 in the middle — a pair of equal bits always recodes to 0, which is Booth's way of skipping a run.",
+        setup:[
+          {k:"multiplier", v:"01101"},
+          {k:"value", v:"13"}
+        ],
+        steps:[
+          {
+            label:"1. prepare",
+            fields:[
+              {k:"bits after appending 0", t:"bin", a:"011010"}
+            ],
+            why:"Booth's algorithm never sign-extends — it only appends one 0 to the right of the LSb, because \"the bit to the right of the LSb is nothing, i.e. equal to 0.\""
+          },
+          {
+            label:"2. recode",
+            fields:[
+              {k:"Booth digits", t:"recode", a:"+10-1+1-1"}
+            ],
+            why:"Pair the bits (b<sub>i</sub>, b<sub>i-1</sub>) walking left: 00 → 0, 01 → +1, 10 → −1, 11 → 0. Each pair overlaps the previous one by one bit, so 5 bits give 5 digits."
+          }
+        ],
+        note:"Runs of identical bits collapse to 0 digits, and a 0 digit means a summand of all zeros. That's where Booth's actually saves work: only the boundaries of a run cost you an addition."
+      },
+      {
+        n:44,
+        asm:"Booth-recode 11010",
+        mode:"Booth's algorithm · multiplier −6",
+        hint:"The multiplier from the lecture's \"Try\". Start at the appended 0 and work left, one pair at a time — the leading 11 is what decides your top digit.",
+        setup:[
+          {k:"multiplier", v:"11010"},
+          {k:"value", v:"−6"}
+        ],
+        steps:[
+          {
+            label:"1. prepare",
+            fields:[
+              {k:"bits after appending 0", t:"bin", a:"110100"}
+            ],
+            why:"Booth's algorithm never sign-extends — it only appends one 0 to the right of the LSb, because \"the bit to the right of the LSb is nothing, i.e. equal to 0.\""
+          },
+          {
+            label:"2. recode",
+            fields:[
+              {k:"Booth digits", t:"recode", a:"0-1+1-10"}
+            ],
+            why:"Pair the bits (b<sub>i</sub>, b<sub>i-1</sub>) walking left: 00 → 0, 01 → +1, 10 → −1, 11 → 0. Each pair overlaps the previous one by one bit, so 5 bits give 5 digits."
+          }
+        ],
+        note:"This is the same multiplier used throughout Module 9's worked examples, so memorise its shape: 11010 → 0−1+1−10. You'll reuse it in the pencil-and-paper, Booth and extended-Booth product drills."
+      },
+      {
+        n:45,
+        asm:"Extended-Booth-recode 0101",
+        mode:"Bit-pair recoding · multiplier 5",
+        hint:"Even bit count, so nothing to sign-extend. Append the 0, then read THREE bits at a time while stepping TWO — the windows overlap by one bit.",
+        setup:[
+          {k:"multiplier", v:"0101"},
+          {k:"value", v:"5"}
+        ],
+        steps:[
+          {
+            label:"1. prepare",
+            fields:[
+              {k:"bits after sign-extend + append 0", t:"bin", a:"01010"}
+            ],
+            why:"0101 already has an even number of bits, so no sign-extension is needed — just append the 0: 01010."
+          },
+          {
+            label:"2. recode",
+            fields:[
+              {k:"bit-pair digits", t:"recode", a:"+1+1"}
+            ],
+            why:"Slide the window three bits at a time, stepping two: 000→0, 001→+1, 010→+1, 011→+2, 100→−2, 101→−1, 110→−1, 111→0. 4 bits give 2 digits — half as many summands as plain Booth."
+          }
+        ],
+        note:"Four multiplier bits collapse to two summands. Compare with problem 41: identical multiplier, half the additions. That halving is the entire point of bit-pair recoding."
+      },
+      {
+        n:46,
+        asm:"Extended-Booth-recode 1011",
+        mode:"Bit-pair recoding · multiplier −5",
+        hint:"Same preparation as above. The rule table is symmetric — 100 → −2 and 011 → +2 are the only entries that ever produce a doubled multiplicand.",
+        setup:[
+          {k:"multiplier", v:"1011"},
+          {k:"value", v:"−5"}
+        ],
+        steps:[
+          {
+            label:"1. prepare",
+            fields:[
+              {k:"bits after sign-extend + append 0", t:"bin", a:"10110"}
+            ],
+            why:"1011 already has an even number of bits, so no sign-extension is needed — just append the 0: 10110."
+          },
+          {
+            label:"2. recode",
+            fields:[
+              {k:"bit-pair digits", t:"recode", a:"-1-1"}
+            ],
+            why:"Slide the window three bits at a time, stepping two: 000→0, 001→+1, 010→+1, 011→+2, 100→−2, 101→−1, 110→−1, 111→0. 4 bits give 2 digits — half as many summands as plain Booth."
+          }
+        ],
+        note:"−1−1 means \"subtract m, then subtract m shifted twice\": −1 − 4 = −5 in units of m. Always sanity-check a recoding by evaluating it in powers of 4, since each successive digit is worth 4× the last."
+      },
+      {
+        n:47,
+        asm:"Extended-Booth-recode 11010",
+        mode:"Bit-pair recoding · multiplier −6",
+        hint:"Five bits — odd. There is a preparation step here that problems 45 and 46 didn't need, and forgetting it is what turns a right answer into a wrong one.",
+        setup:[
+          {k:"multiplier", v:"11010"},
+          {k:"value", v:"−6"}
+        ],
+        steps:[
+          {
+            label:"1. prepare",
+            fields:[
+              {k:"bits after sign-extend + append 0", t:"bin", a:"1110100"}
+            ],
+            why:"11010 has an odd number of bits, so sign-extend it first (11010 → 111010), then append the 0: 1110100. Skipping the sign-extension is the single most common error here."
+          },
+          {
+            label:"2. recode",
+            fields:[
+              {k:"bit-pair digits", t:"recode", a:"0-1-2"}
+            ],
+            why:"Slide the window three bits at a time, stepping two: 000→0, 001→+1, 010→+1, 011→+2, 100→−2, 101→−1, 110→−1, 111→0. 6 bits give 3 digits — half as many summands as plain Booth."
+          }
+        ],
+        note:"Check it: 0·16 + (−1)·4 + (−2)·1 = −6 ✓. The digits are worth 1, 4, 16 … because each bit-pair covers two binary places."
+      },
+      {
+        n:48,
+        asm:"Extended-Booth-recode 10110",
+        mode:"Bit-pair recoding · multiplier −10",
+        hint:"Odd bit count again. Sign-extend first, then append — do it in the other order and your windows land one place off.",
+        setup:[
+          {k:"multiplier", v:"10110"},
+          {k:"value", v:"−10"}
+        ],
+        steps:[
+          {
+            label:"1. prepare",
+            fields:[
+              {k:"bits after sign-extend + append 0", t:"bin", a:"1101100"}
+            ],
+            why:"10110 has an odd number of bits, so sign-extend it first (10110 → 110110), then append the 0: 1101100. Skipping the sign-extension is the single most common error here."
+          },
+          {
+            label:"2. recode",
+            fields:[
+              {k:"bit-pair digits", t:"recode", a:"-1+2-2"}
+            ],
+            why:"Slide the window three bits at a time, stepping two: 000→0, 001→+1, 010→+1, 011→+2, 100→−2, 101→−1, 110→−1, 111→0. 6 bits give 3 digits — half as many summands as plain Booth."
+          }
+        ],
+        note:"−1·16 + 2·4 + (−2)·1 = −16 + 8 − 2 = −10 ✓, and 10110 as a 5-bit two's-complement number is indeed −10. Evaluating the digits back to decimal is the fastest self-check you have."
+      }
+    ]
+  },
+  {
+    id:"s6",
+    n:6,
+    part:"Module 9 · Multiplication",
+    engine:"calc",
+    title:"Pencil-and-Paper, Booth & Extended Booth Products",
+    kicker:"Section 6",
+    blurb:"Full multiplications, summand by summand: the four-step pencil-and-paper method with its sign correction, then the same products via Booth and extended Booth so you can see the row count collapse from six to three.",
+    primer:"\n<div class=\"f-block\">\n  <h3>Booth's recoding</h3>\n  <p>Append one <b>0</b> to the right of the LSb, then read overlapping bit pairs (b<sub>i</sub>, b<sub>i-1</sub>) from the right:</p>\n  <div class=\"gate-demo\">00 → 0 &nbsp; 01 → +1 &nbsp; 10 → −1 &nbsp; 11 → 0</div>\n  <p style=\"margin-top:8px;\">An <i>n</i>-bit multiplier gives <i>n</i> digits, so <i>n</i> summands.</p>\n  <h3>Extended Booth's (bit-pair recoding)</h3>\n  <p>Sign-extend to an <b>even</b> bit count first, then append the 0, then read three-bit windows stepping two places:</p>\n  <div class=\"gate-demo\">000 → 0 &nbsp; 001 → +1 &nbsp; 010 → +1 &nbsp; 011 → +2<br>100 → −2 &nbsp; 101 → −1 &nbsp; 110 → −1 &nbsp; 111 → 0</div>\n  <p style=\"margin-top:8px;\">Halves the number of summands.</p>\n</div>\n<div class=\"f-block\">\n  <h3>What each digit multiplies out to</h3>\n  <ul>\n    <li><code>0</code> × m = all zeros</li>\n    <li><code>+1</code> × m = m</li>\n    <li><code>−1</code> × m = 2's complement of m</li>\n    <li><code>+2</code> × m = m with a 0 appended (m0)</li>\n    <li><code>−2</code> × m = [2's complement of m] with a 0 appended</li>\n  </ul>\n  <h3>Writing summands</h3>\n  <p>Every row is sign-extended to the full <i>m+n</i> product width and shifted left by its position — one place per digit for Booth's, <b>two</b> places per digit for extended Booth's.</p>\n  <p>This reviewer accepts either the lecture's shortened row (the leading portion, as written on the slides) or the full-width row with its trailing shift zeros spelled out.</p>\n</div>",
+    primerTitle:"Summand rules & row widths",
+    items:[
+      {
+        n:49,
+        asm:"0100 × 0101",
+        mode:"Pencil-and-paper · 4 × 5",
+        tag:"pencil",
+        hint:"Both operands are positive, so this is ordinary long multiplication — the only trick is that the FIRST row sets the width of everything below it.",
+        note:"The first intermediate product is sign-extended to the full m+n bits; every later row is that same value shifted left. Because the multiplier is positive, step 4 never fires.",
+        setup:[
+          {k:"multiplicand m", v:"0100"},
+          {k:"multiplier n", v:"0101"},
+          {k:"product width", v:"4+4 = 8 bits"}
+        ],
+        rowsHelp:true,
+        steps:[
+          {
+            label:"summand 1",
+            fields:[
+              {k:"shift 0", t:"bin", a:"00000100", ph:"8 bits"}
+            ],
+            why:"b<sub>0</sub> = 1, so this row is the multiplicand sign-extended to 8 bits and shifted left 0: <code>00000100</code>."
+          },
+          {
+            label:"summand 2",
+            fields:[
+              {
+                k:"shift 1",
+                t:"bin",
+                a:"0000000",
+                alt:[
+                  "00000000"
+                ],
+                ph:"7 bits (or 8)"
+              }
+            ],
+            why:"b<sub>1</sub> = 0, so the row is all zeros."
+          },
+          {
+            label:"summand 3",
+            fields:[
+              {
+                k:"shift 2",
+                t:"bin",
+                a:"000100",
+                alt:[
+                  "00010000"
+                ],
+                ph:"6 bits (or 8)"
+              }
+            ],
+            why:"b<sub>2</sub> = 1, so this row is the multiplicand sign-extended to 8 bits and shifted left 2: <code>00010000</code> — written the lecture's way, with the shifted-in zeros left off the right, that is <code>000100</code>. Either form is accepted."
+          },
+          {
+            label:"summand 4",
+            fields:[
+              {
+                k:"shift 3",
+                t:"bin",
+                a:"00000",
+                alt:[
+                  "000000",
+                  "0000000",
+                  "00000000"
+                ],
+                ph:"5 bits (or 8)"
+              }
+            ],
+            why:"b<sub>3</sub> = 0, so the row is all zeros."
+          },
+          {
+            label:"product",
+            fields:[
+              {k:"8-bit product", t:"bin", a:"00010100"},
+              {k:"decimal", t:"dec", a:"20"}
+            ],
+            why:"Add every row modulo 2<sup>8</sup> and discard the carry out of the top: 4 × 5 = 20."
+          }
+        ]
+      },
+      {
+        n:50,
+        asm:"0100 × 1011",
+        mode:"Pencil-and-paper · 4 × −5",
+        tag:"pencil",
+        hint:"Positive multiplicand, negative multiplier. Rows 1–4 are business as usual — but the multiplier's top bit carries NEGATIVE weight, and that debt has to be paid off somewhere.",
+        note:"Rows 1–4 compute m × (multiplier read as UNSIGNED) = 4 × 11 = 44. The correction row adds (−m) × 2⁴ = −4 × 16 = −64, and 44 − 64 = −20 ✓. That's exactly the arithmetic behind \"add the 2's complement of the multiplicand, shifted to the sign-bit position.\"",
+        setup:[
+          {k:"multiplicand m", v:"0100"},
+          {k:"multiplier n", v:"1011"},
+          {k:"product width", v:"4+4 = 8 bits"}
+        ],
+        rowsHelp:true,
+        steps:[
+          {
+            label:"summand 1",
+            fields:[
+              {k:"shift 0", t:"bin", a:"00000100", ph:"8 bits"}
+            ],
+            why:"b<sub>0</sub> = 1, so this row is the multiplicand sign-extended to 8 bits and shifted left 0: <code>00000100</code>."
+          },
+          {
+            label:"summand 2",
+            fields:[
+              {
+                k:"shift 1",
+                t:"bin",
+                a:"0000100",
+                alt:[
+                  "00001000"
+                ],
+                ph:"7 bits (or 8)"
+              }
+            ],
+            why:"b<sub>1</sub> = 1, so this row is the multiplicand sign-extended to 8 bits and shifted left 1: <code>00001000</code> — written the lecture's way, with the shifted-in zeros left off the right, that is <code>0000100</code>. Either form is accepted."
+          },
+          {
+            label:"summand 3",
+            fields:[
+              {
+                k:"shift 2",
+                t:"bin",
+                a:"000000",
+                alt:[
+                  "0000000",
+                  "00000000"
+                ],
+                ph:"6 bits (or 8)"
+              }
+            ],
+            why:"b<sub>2</sub> = 0, so the row is all zeros."
+          },
+          {
+            label:"summand 4",
+            fields:[
+              {
+                k:"shift 3",
+                t:"bin",
+                a:"00100",
+                alt:[
+                  "00100000"
+                ],
+                ph:"5 bits (or 8)"
+              }
+            ],
+            why:"b<sub>3</sub> = 1, so this row is the multiplicand sign-extended to 8 bits and shifted left 3: <code>00100000</code> — written the lecture's way, with the shifted-in zeros left off the right, that is <code>00100</code>. Either form is accepted."
+          },
+          {
+            label:"step-4 correction",
+            fields:[
+              {
+                k:"shift 4",
+                t:"bin",
+                a:"1100",
+                alt:[
+                  "11000000"
+                ],
+                ph:"4 bits (or 8)"
+              }
+            ],
+            why:"The multiplier is negative, so its sign bit carries negative weight. Undo it by adding the 2's complement of the multiplicand — 2's-comp(0100) = <code>1100</code> — placed past the sign-bit column, i.e. shifted left 4: <code>11000000</code> — written the lecture's way, with the shifted-in zeros left off the right, that is <code>1100</code>. Either form is accepted."
+          },
+          {
+            label:"product",
+            fields:[
+              {k:"8-bit product", t:"bin", a:"11101100"},
+              {k:"decimal", t:"dec", a:"-20"}
+            ],
+            why:"Add every row modulo 2<sup>8</sup> and discard the carry out of the top: 4 × -5 = -20."
+          }
+        ]
+      },
+      {
+        n:51,
+        asm:"1100 × 1011",
+        mode:"Pencil-and-paper · −4 × −5",
+        tag:"pencil",
+        hint:"Both operands negative. The sign-extension on every row does the work for the multiplicand's sign; the correction row does it for the multiplier's.",
+        note:"Two negatives, one correction row — the multiplicand's sign is handled free of charge by sign-extending each summand, while ONLY the multiplier's sign needs step 4. Getting this asymmetry straight is most of the battle.",
+        setup:[
+          {k:"multiplicand m", v:"1100"},
+          {k:"multiplier n", v:"1011"},
+          {k:"product width", v:"4+4 = 8 bits"}
+        ],
+        rowsHelp:true,
+        steps:[
+          {
+            label:"summand 1",
+            fields:[
+              {k:"shift 0", t:"bin", a:"11111100", ph:"8 bits"}
+            ],
+            why:"b<sub>0</sub> = 1, so this row is the multiplicand sign-extended to 8 bits and shifted left 0: <code>11111100</code>."
+          },
+          {
+            label:"summand 2",
+            fields:[
+              {
+                k:"shift 1",
+                t:"bin",
+                a:"1111100",
+                alt:[
+                  "11111000"
+                ],
+                ph:"7 bits (or 8)"
+              }
+            ],
+            why:"b<sub>1</sub> = 1, so this row is the multiplicand sign-extended to 8 bits and shifted left 1: <code>11111000</code> — written the lecture's way, with the shifted-in zeros left off the right, that is <code>1111100</code>. Either form is accepted."
+          },
+          {
+            label:"summand 3",
+            fields:[
+              {
+                k:"shift 2",
+                t:"bin",
+                a:"000000",
+                alt:[
+                  "0000000",
+                  "00000000"
+                ],
+                ph:"6 bits (or 8)"
+              }
+            ],
+            why:"b<sub>2</sub> = 0, so the row is all zeros."
+          },
+          {
+            label:"summand 4",
+            fields:[
+              {
+                k:"shift 3",
+                t:"bin",
+                a:"11100",
+                alt:[
+                  "11100000"
+                ],
+                ph:"5 bits (or 8)"
+              }
+            ],
+            why:"b<sub>3</sub> = 1, so this row is the multiplicand sign-extended to 8 bits and shifted left 3: <code>11100000</code> — written the lecture's way, with the shifted-in zeros left off the right, that is <code>11100</code>. Either form is accepted."
+          },
+          {
+            label:"step-4 correction",
+            fields:[
+              {
+                k:"shift 4",
+                t:"bin",
+                a:"0100",
+                alt:[
+                  "01000000"
+                ],
+                ph:"4 bits (or 8)"
+              }
+            ],
+            why:"The multiplier is negative, so its sign bit carries negative weight. Undo it by adding the 2's complement of the multiplicand — 2's-comp(1100) = <code>0100</code> — placed past the sign-bit column, i.e. shifted left 4: <code>01000000</code> — written the lecture's way, with the shifted-in zeros left off the right, that is <code>0100</code>. Either form is accepted."
+          },
+          {
+            label:"product",
+            fields:[
+              {k:"8-bit product", t:"bin", a:"00010100"},
+              {k:"decimal", t:"dec", a:"20"}
+            ],
+            why:"Add every row modulo 2<sup>8</sup> and discard the carry out of the top: -4 × -5 = 20."
+          }
+        ]
+      },
+      {
+        n:52,
+        asm:"01101 × 11010",
+        mode:"Pencil-and-paper · 13 × −6",
+        tag:"pencil",
+        hint:"Five-bit operands, so a ten-bit product and six rows in total. Take the width seriously from row 1 or every later row will be misaligned.",
+        note:"Six rows for a five-bit multiplier: one per bit, plus the step-4 correction. Compare the effort with problem 54 — extended Booth's gets the identical answer in three.",
+        setup:[
+          {k:"multiplicand m", v:"01101"},
+          {k:"multiplier n", v:"11010"},
+          {k:"product width", v:"5+5 = 10 bits"}
+        ],
+        rowsHelp:true,
+        steps:[
+          {
+            label:"summand 1",
+            fields:[
+              {k:"shift 0", t:"bin", a:"0000000000", ph:"10 bits"}
+            ],
+            why:"b<sub>0</sub> = 0, so the row is all zeros. Write it at the full 10-bit width — the first row is what fixes the width of the whole sum."
+          },
+          {
+            label:"summand 2",
+            fields:[
+              {
+                k:"shift 1",
+                t:"bin",
+                a:"000001101",
+                alt:[
+                  "0000011010"
+                ],
+                ph:"9 bits (or 10)"
+              }
+            ],
+            why:"b<sub>1</sub> = 1, so this row is the multiplicand sign-extended to 10 bits and shifted left 1: <code>0000011010</code> — written the lecture's way, with the shifted-in zeros left off the right, that is <code>000001101</code>. Either form is accepted."
+          },
+          {
+            label:"summand 3",
+            fields:[
+              {
+                k:"shift 2",
+                t:"bin",
+                a:"00000000",
+                alt:[
+                  "000000000",
+                  "0000000000"
+                ],
+                ph:"8 bits (or 10)"
+              }
+            ],
+            why:"b<sub>2</sub> = 0, so the row is all zeros."
+          },
+          {
+            label:"summand 4",
+            fields:[
+              {
+                k:"shift 3",
+                t:"bin",
+                a:"0001101",
+                alt:[
+                  "0001101000"
+                ],
+                ph:"7 bits (or 10)"
+              }
+            ],
+            why:"b<sub>3</sub> = 1, so this row is the multiplicand sign-extended to 10 bits and shifted left 3: <code>0001101000</code> — written the lecture's way, with the shifted-in zeros left off the right, that is <code>0001101</code>. Either form is accepted."
+          },
+          {
+            label:"summand 5",
+            fields:[
+              {
+                k:"shift 4",
+                t:"bin",
+                a:"001101",
+                alt:[
+                  "0011010000"
+                ],
+                ph:"6 bits (or 10)"
+              }
+            ],
+            why:"b<sub>4</sub> = 1, so this row is the multiplicand sign-extended to 10 bits and shifted left 4: <code>0011010000</code> — written the lecture's way, with the shifted-in zeros left off the right, that is <code>001101</code>. Either form is accepted."
+          },
+          {
+            label:"step-4 correction",
+            fields:[
+              {
+                k:"shift 5",
+                t:"bin",
+                a:"10011",
+                alt:[
+                  "1001100000"
+                ],
+                ph:"5 bits (or 10)"
+              }
+            ],
+            why:"The multiplier is negative, so its sign bit carries negative weight. Undo it by adding the 2's complement of the multiplicand — 2's-comp(01101) = <code>10011</code> — placed past the sign-bit column, i.e. shifted left 5: <code>1001100000</code> — written the lecture's way, with the shifted-in zeros left off the right, that is <code>10011</code>. Either form is accepted."
+          },
+          {
+            label:"product",
+            fields:[
+              {k:"10-bit product", t:"bin", a:"1110110010"},
+              {k:"decimal", t:"dec", a:"-78"}
+            ],
+            why:"Add every row modulo 2<sup>10</sup> and discard the carry out of the top: 13 × -6 = -78."
+          }
+        ]
+      },
+      {
+        n:53,
+        asm:"0100 × 1011",
+        mode:"Booth's algorithm · 4 × −5",
+        tag:"Booth",
+        hint:"Same numbers as problem 50, different algorithm. Recode first, then let each digit pick its row: +1 takes m, −1 takes 2's-comp(m), 0 takes zeros.",
+        note:"Same product as problem 50, but there is no correction row — and note that a 0 digit is a free row. Booth's replaces the sign bookkeeping with a recoding you do once, up front.",
+        setup:[
+          {k:"multiplicand m", v:"0100"},
+          {k:"2's-comp(m)", v:"1100"},
+          {k:"multiplier n", v:"1011"},
+          {k:"product width", v:"8 bits"}
+        ],
+        rowsHelp:true,
+        steps:[
+          {
+            label:"recode",
+            fields:[
+              {k:"Booth digits of the multiplier", t:"recode", a:"-1+10-1"}
+            ],
+            why:"Append a 0 to 1011 → 10110, then pair: -1+10-1."
+          },
+          {
+            label:"summand 1",
+            fields:[
+              {k:"shift 0", t:"bin", a:"11111100", ph:"8 bits"}
+            ],
+            why:"Digit 0 is −1, so this row is 2's-comp(m) = <code>1100</code> sign-extended and shifted left 0: <code>11111100</code>."
+          },
+          {
+            label:"summand 2",
+            fields:[
+              {
+                k:"shift 1",
+                t:"bin",
+                a:"0000000",
+                alt:[
+                  "00000000"
+                ],
+                ph:"7 bits (or 8)"
+              }
+            ],
+            why:"Digit 1 is 0, so 0 × m = all zeros."
+          },
+          {
+            label:"summand 3",
+            fields:[
+              {
+                k:"shift 2",
+                t:"bin",
+                a:"000100",
+                alt:[
+                  "00010000"
+                ],
+                ph:"6 bits (or 8)"
+              }
+            ],
+            why:"Digit 2 is +1, so this row is m sign-extended and shifted left 2: <code>00010000</code> — written the lecture's way, with the shifted-in zeros left off the right, that is <code>000100</code>. Either form is accepted."
+          },
+          {
+            label:"summand 4",
+            fields:[
+              {
+                k:"shift 3",
+                t:"bin",
+                a:"11100",
+                alt:[
+                  "11100000"
+                ],
+                ph:"5 bits (or 8)"
+              }
+            ],
+            why:"Digit 3 is −1, so this row is 2's-comp(m) = <code>1100</code> sign-extended and shifted left 3: <code>11100000</code> — written the lecture's way, with the shifted-in zeros left off the right, that is <code>11100</code>. Either form is accepted."
+          },
+          {
+            label:"product",
+            fields:[
+              {k:"8-bit product", t:"bin", a:"11101100"},
+              {k:"decimal", t:"dec", a:"-20"}
+            ],
+            why:"4 × -5 = -20. No step-4 correction row exists in Booth's — the sign is already baked into the digits."
+          }
+        ]
+      },
+      {
+        n:54,
+        asm:"01101 × 11010",
+        mode:"Extended Booth's · 13 × −6",
+        tag:"ext. Booth",
+        hint:"The full pipeline: sign-extend, append, bit-pair, then three summands. Watch the shifts — each successive row moves left by TWO, not one.",
+        note:"Three summands where pencil-and-paper needed six. The ±2 digits are what make it possible, and they cost nothing extra in hardware: multiplying by 2 is just an appended zero.",
+        setup:[
+          {k:"multiplicand m", v:"01101"},
+          {k:"2's-comp(m)", v:"10011"},
+          {k:"multiplier n", v:"11010"},
+          {k:"product width", v:"10 bits"}
+        ],
+        rowsHelp:true,
+        steps:[
+          {
+            label:"prepare",
+            fields:[
+              {k:"sign-extend + append 0", t:"bin", a:"1110100"}
+            ],
+            why:"11010 has 5 bits (odd — sign-extend first), then append the 0."
+          },
+          {
+            label:"recode",
+            fields:[
+              {k:"bit-pair digits", t:"recode", a:"0-1-2"}
+            ],
+            why:"Three-bit windows stepping two places: 0-1-2. 3 digits means 3 summands instead of 5."
+          },
+          {
+            label:"summand 1",
+            fields:[
+              {k:"shift 0", t:"bin", a:"1111100110", ph:"10 bits"}
+            ],
+            why:"Digit 0 is -2, so the row is 2's-comp(m) with a 0 appended = <code>100110</code>, sign-extended and shifted left 0 (each bit-pair covers two places): <code>1111100110</code>."
+          },
+          {
+            label:"summand 2",
+            fields:[
+              {
+                k:"shift 2",
+                t:"bin",
+                a:"11110011",
+                alt:[
+                  "1111001100"
+                ],
+                ph:"8 bits (or 10)"
+              }
+            ],
+            why:"Digit 1 is -1, so the row is 2's-comp(m) = <code>10011</code>, sign-extended and shifted left 2 (each bit-pair covers two places): <code>1111001100</code> — written the lecture's way, with the shifted-in zeros left off the right, that is <code>11110011</code>. Either form is accepted."
+          },
+          {
+            label:"summand 3",
+            fields:[
+              {
+                k:"shift 4",
+                t:"bin",
+                a:"000000",
+                alt:[
+                  "0000000",
+                  "00000000",
+                  "000000000",
+                  "0000000000"
+                ],
+                ph:"6 bits (or 10)"
+              }
+            ],
+            why:"Digit 2 is 0, so the row is all zeros, sign-extended and shifted left 4 (each bit-pair covers two places): <code>0000000000</code> — written the lecture's way, with the shifted-in zeros left off the right, that is <code>000000</code>. Either form is accepted."
+          },
+          {
+            label:"product",
+            fields:[
+              {k:"10-bit product", t:"bin", a:"1110110010"},
+              {k:"decimal", t:"dec", a:"-78"}
+            ],
+            why:"13 × -6 = -78 — same product as plain Booth's, reached in 3 additions instead of 5."
+          }
+        ]
+      }
+    ]
+  },
+  {
+    id:"s7",
+    n:7,
+    part:"Module 9 · Multiplication",
+    engine:"calc",
+    title:"Sequential Circuit Binary Multiplier",
+    kicker:"Section 7",
+    blurb:"Booth's algorithm as the ALU actually runs it: three registers, one pass per multiplier bit, and an arithmetic shift that never stops. Trace A, Q and Q₋₁ to the end of each pass.",
+    primer:"\n<div class=\"f-block\">\n  <h3>Initialization</h3>\n  <ul>\n    <li>A ← 0, Q<sub>-1</sub> ← 0</li>\n    <li>M gets the multiplicand</li>\n    <li>Q gets the multiplier</li>\n  </ul>\n  <h3>Loop — once per multiplier bit</h3>\n  <ul>\n    <li>If Q<sub>0</sub>Q<sub>-1</sub> = <b>01</b> then A ← A + M</li>\n    <li>Else if Q<sub>0</sub>Q<sub>-1</sub> = <b>10</b> then A ← A − M</li>\n    <li>Otherwise (00 or 11) do nothing</li>\n    <li>Then <b>arithmetic</b>-shift A, Q, Q<sub>-1</sub> right one place</li>\n  </ul>\n</div>\n<div class=\"f-block\">\n  <h3>The shift, bit by bit</h3>\n  <p>The shift is one register-wide operation across all three:</p>\n  <div class=\"gate-demo\">A<sub>n-1</sub> → A<sub>n-1</sub> (sign copied)<br>A → A &gt;&gt; 1<br>A<sub>0</sub> → Q<sub>n-1</sub><br>Q → Q &gt;&gt; 1<br>Q<sub>0</sub> → Q<sub>-1</sub></div>\n  <p style=\"margin-top:8px;\">It is <i>arithmetic</i>, not logical — A's sign bit is duplicated, never zero-filled. That single detail is what lets the same loop handle negative operands.</p>\n  <h3>Result</h3>\n  <p>The product is the register pair <b>AQ</b> read as one 2<i>n</i>-bit two's-complement number. Q<sub>-1</sub> is scratch and is discarded.</p>\n</div>",
+    primerTitle:"The algorithm — initialization, loop, and the shift in detail",
+    items:[
+      {
+        n:55,
+        asm:"0100 × 0101",
+        mode:"Sequential circuit binary multiplier · 4 passes",
+        tag:"sequential",
+        hint:"One pass per multiplier bit. Before you touch the adder, read the pair Q₀Q₋₁ — that pair, not the bit alone, decides add / subtract / do nothing. Every pass ends with an arithmetic shift, no exceptions.",
+        note:"This is Booth's recoding done in hardware, one digit at a time: Q₀Q₋₁ = 01 is a +1 digit (add), 10 is a −1 digit (subtract), and 00 or 11 is a 0 digit (shift only). The Q₋₁ flip-flop exists purely to remember the bit that fell off the end last pass.",
+        setup:[
+          {k:"M (multiplicand)", v:"0100"},
+          {k:"−M", v:"1100"},
+          {k:"A", v:"0000"},
+          {k:"Q (multiplier)", v:"0101"},
+          {k:"Q<sub>-1</sub>", v:"0"}
+        ],
+        steps:[
+          {
+            label:"pass 1",
+            fields:[
+              {k:"A", t:"bin", a:"1110"},
+              {k:"Q", t:"bin", a:"0010"},
+              {k:"Q<sub>-1</sub>", t:"bin", a:"1"}
+            ],
+            why:"Q<sub>0</sub>Q<sub>-1</sub> = 10 → <b>A ← A − M</b>, giving A = <code>1100</code>, then arithmetic-shift A:Q:Q<sub>-1</sub> right one place. The shift is one motion across all three registers: A's sign bit is copied into itself, A's LSb drops into Q's MSb, and Q's LSb drops into Q<sub>-1</sub>."
+          },
+          {
+            label:"pass 2",
+            fields:[
+              {k:"A", t:"bin", a:"0001"},
+              {k:"Q", t:"bin", a:"0001"},
+              {k:"Q<sub>-1</sub>", t:"bin", a:"0"}
+            ],
+            why:"Q<sub>0</sub>Q<sub>-1</sub> = 01 → <b>A ← A + M</b>, giving A = <code>0010</code>, then arithmetic-shift A:Q:Q<sub>-1</sub> right one place."
+          },
+          {
+            label:"pass 3",
+            fields:[
+              {k:"A", t:"bin", a:"1110"},
+              {k:"Q", t:"bin", a:"1000"},
+              {k:"Q<sub>-1</sub>", t:"bin", a:"1"}
+            ],
+            why:"Q<sub>0</sub>Q<sub>-1</sub> = 10 → <b>A ← A − M</b>, giving A = <code>1101</code>, then arithmetic-shift A:Q:Q<sub>-1</sub> right one place."
+          },
+          {
+            label:"pass 4",
+            fields:[
+              {k:"A", t:"bin", a:"0001"},
+              {k:"Q", t:"bin", a:"0100"},
+              {k:"Q<sub>-1</sub>", t:"bin", a:"0"}
+            ],
+            why:"Q<sub>0</sub>Q<sub>-1</sub> = 01 → <b>A ← A + M</b>, giving A = <code>0010</code>, then arithmetic-shift A:Q:Q<sub>-1</sub> right one place."
+          },
+          {
+            label:"result",
+            fields:[
+              {k:"AQ (8 bits)", t:"bin", a:"00010100"},
+              {k:"decimal", t:"dec", a:"20"}
+            ],
+            why:"After 4 passes the product is the register pair AQ, read as one 8-bit two's-complement number: 4 × 5 = 20."
+          }
+        ]
+      },
+      {
+        n:56,
+        asm:"01101 × 11010",
+        mode:"Sequential circuit binary multiplier · 5 passes",
+        tag:"sequential",
+        hint:"The lecture's \"Try\" problem. Five bits, five passes — and pass 1 does nothing at all, which trips people up because it looks like a mistake.",
+        note:"A no-op pass is a real pass: the shift still happens, and it still consumes one multiplier bit. Also note the answer is negative and correct without any special end-of-loop fix-up — the arithmetic (not logical) shift is what keeps the sign intact.<br><br><b>Deck errata:</b> NLec 17's \"Try\" slide states the multiplicand as <code>11101</code>, but its own answer table only works for <code>01101</code> — the same +13 used throughout NLec 16. Its 5th-pass Q is also printed as <code>10011</code>; the algorithm gives <code>10010</code>, which is what makes AQ = <code>1110110010</code> = −78, matching the product NLec 16 derives three separate ways.",
+        setup:[
+          {k:"M (multiplicand)", v:"01101"},
+          {k:"−M", v:"10011"},
+          {k:"A", v:"00000"},
+          {k:"Q (multiplier)", v:"11010"},
+          {k:"Q<sub>-1</sub>", v:"0"}
+        ],
+        steps:[
+          {
+            label:"pass 1",
+            fields:[
+              {k:"A", t:"bin", a:"00000"},
+              {k:"Q", t:"bin", a:"01101"},
+              {k:"Q<sub>-1</sub>", t:"bin", a:"0"}
+            ],
+            why:"Q<sub>0</sub>Q<sub>-1</sub> = 00 → <b>no operation</b>, then arithmetic-shift A:Q:Q<sub>-1</sub> right one place. The shift is one motion across all three registers: A's sign bit is copied into itself, A's LSb drops into Q's MSb, and Q's LSb drops into Q<sub>-1</sub>."
+          },
+          {
+            label:"pass 2",
+            fields:[
+              {k:"A", t:"bin", a:"11001"},
+              {k:"Q", t:"bin", a:"10110"},
+              {k:"Q<sub>-1</sub>", t:"bin", a:"1"}
+            ],
+            why:"Q<sub>0</sub>Q<sub>-1</sub> = 10 → <b>A ← A − M</b>, giving A = <code>10011</code>, then arithmetic-shift A:Q:Q<sub>-1</sub> right one place."
+          },
+          {
+            label:"pass 3",
+            fields:[
+              {k:"A", t:"bin", a:"00011"},
+              {k:"Q", t:"bin", a:"01011"},
+              {k:"Q<sub>-1</sub>", t:"bin", a:"0"}
+            ],
+            why:"Q<sub>0</sub>Q<sub>-1</sub> = 01 → <b>A ← A + M</b>, giving A = <code>00110</code>, then arithmetic-shift A:Q:Q<sub>-1</sub> right one place."
+          },
+          {
+            label:"pass 4",
+            fields:[
+              {k:"A", t:"bin", a:"11011"},
+              {k:"Q", t:"bin", a:"00101"},
+              {k:"Q<sub>-1</sub>", t:"bin", a:"1"}
+            ],
+            why:"Q<sub>0</sub>Q<sub>-1</sub> = 10 → <b>A ← A − M</b>, giving A = <code>10110</code>, then arithmetic-shift A:Q:Q<sub>-1</sub> right one place."
+          },
+          {
+            label:"pass 5",
+            fields:[
+              {k:"A", t:"bin", a:"11101"},
+              {k:"Q", t:"bin", a:"10010"},
+              {k:"Q<sub>-1</sub>", t:"bin", a:"1"}
+            ],
+            why:"Q<sub>0</sub>Q<sub>-1</sub> = 11 → <b>no operation</b>, then arithmetic-shift A:Q:Q<sub>-1</sub> right one place."
+          },
+          {
+            label:"result",
+            fields:[
+              {k:"AQ (10 bits)", t:"bin", a:"1110110010"},
+              {k:"decimal", t:"dec", a:"-78"}
+            ],
+            why:"After 5 passes the product is the register pair AQ, read as one 10-bit two's-complement number: 13 × -6 = -78."
+          }
+        ]
+      },
+      {
+        n:57,
+        asm:"1100 × 0101",
+        mode:"Sequential circuit binary multiplier · 4 passes",
+        tag:"sequential",
+        hint:"Negative multiplicand this time, positive multiplier. Nothing in the loop changes — see whether you can predict that before you run it.",
+        note:"The multiplicand's sign never gets special handling: it rides along inside M, and the arithmetic shift preserves it. Only the multiplier is recoded.",
+        setup:[
+          {k:"M (multiplicand)", v:"1100"},
+          {k:"−M", v:"0100"},
+          {k:"A", v:"0000"},
+          {k:"Q (multiplier)", v:"0101"},
+          {k:"Q<sub>-1</sub>", v:"0"}
+        ],
+        steps:[
+          {
+            label:"pass 1",
+            fields:[
+              {k:"A", t:"bin", a:"0010"},
+              {k:"Q", t:"bin", a:"0010"},
+              {k:"Q<sub>-1</sub>", t:"bin", a:"1"}
+            ],
+            why:"Q<sub>0</sub>Q<sub>-1</sub> = 10 → <b>A ← A − M</b>, giving A = <code>0100</code>, then arithmetic-shift A:Q:Q<sub>-1</sub> right one place. The shift is one motion across all three registers: A's sign bit is copied into itself, A's LSb drops into Q's MSb, and Q's LSb drops into Q<sub>-1</sub>."
+          },
+          {
+            label:"pass 2",
+            fields:[
+              {k:"A", t:"bin", a:"1111"},
+              {k:"Q", t:"bin", a:"0001"},
+              {k:"Q<sub>-1</sub>", t:"bin", a:"0"}
+            ],
+            why:"Q<sub>0</sub>Q<sub>-1</sub> = 01 → <b>A ← A + M</b>, giving A = <code>1110</code>, then arithmetic-shift A:Q:Q<sub>-1</sub> right one place."
+          },
+          {
+            label:"pass 3",
+            fields:[
+              {k:"A", t:"bin", a:"0001"},
+              {k:"Q", t:"bin", a:"1000"},
+              {k:"Q<sub>-1</sub>", t:"bin", a:"1"}
+            ],
+            why:"Q<sub>0</sub>Q<sub>-1</sub> = 10 → <b>A ← A − M</b>, giving A = <code>0011</code>, then arithmetic-shift A:Q:Q<sub>-1</sub> right one place."
+          },
+          {
+            label:"pass 4",
+            fields:[
+              {k:"A", t:"bin", a:"1110"},
+              {k:"Q", t:"bin", a:"1100"},
+              {k:"Q<sub>-1</sub>", t:"bin", a:"0"}
+            ],
+            why:"Q<sub>0</sub>Q<sub>-1</sub> = 01 → <b>A ← A + M</b>, giving A = <code>1101</code>, then arithmetic-shift A:Q:Q<sub>-1</sub> right one place."
+          },
+          {
+            label:"result",
+            fields:[
+              {k:"AQ (8 bits)", t:"bin", a:"11101100"},
+              {k:"decimal", t:"dec", a:"-20"}
+            ],
+            why:"After 4 passes the product is the register pair AQ, read as one 8-bit two's-complement number: -4 × 5 = -20."
+          }
+        ]
+      },
+      {
+        n:58,
+        asm:"0111 × 1101",
+        mode:"Sequential circuit binary multiplier · 4 passes",
+        tag:"sequential",
+        hint:"A multiplier with a 1 in the top bit. Watch how the last pass reads Q₀Q₋₁ = 11 or 10 — the top bit's negative weight is applied by the loop itself.",
+        note:"The final pass is where the multiplier's sign bit gets its negative weight, via a subtract rather than an add. That's the hardware equivalent of the pencil-and-paper step-4 correction row.",
+        setup:[
+          {k:"M (multiplicand)", v:"0111"},
+          {k:"−M", v:"1001"},
+          {k:"A", v:"0000"},
+          {k:"Q (multiplier)", v:"1101"},
+          {k:"Q<sub>-1</sub>", v:"0"}
+        ],
+        steps:[
+          {
+            label:"pass 1",
+            fields:[
+              {k:"A", t:"bin", a:"1100"},
+              {k:"Q", t:"bin", a:"1110"},
+              {k:"Q<sub>-1</sub>", t:"bin", a:"1"}
+            ],
+            why:"Q<sub>0</sub>Q<sub>-1</sub> = 10 → <b>A ← A − M</b>, giving A = <code>1001</code>, then arithmetic-shift A:Q:Q<sub>-1</sub> right one place. The shift is one motion across all three registers: A's sign bit is copied into itself, A's LSb drops into Q's MSb, and Q's LSb drops into Q<sub>-1</sub>."
+          },
+          {
+            label:"pass 2",
+            fields:[
+              {k:"A", t:"bin", a:"0001"},
+              {k:"Q", t:"bin", a:"1111"},
+              {k:"Q<sub>-1</sub>", t:"bin", a:"0"}
+            ],
+            why:"Q<sub>0</sub>Q<sub>-1</sub> = 01 → <b>A ← A + M</b>, giving A = <code>0011</code>, then arithmetic-shift A:Q:Q<sub>-1</sub> right one place."
+          },
+          {
+            label:"pass 3",
+            fields:[
+              {k:"A", t:"bin", a:"1101"},
+              {k:"Q", t:"bin", a:"0111"},
+              {k:"Q<sub>-1</sub>", t:"bin", a:"1"}
+            ],
+            why:"Q<sub>0</sub>Q<sub>-1</sub> = 10 → <b>A ← A − M</b>, giving A = <code>1010</code>, then arithmetic-shift A:Q:Q<sub>-1</sub> right one place."
+          },
+          {
+            label:"pass 4",
+            fields:[
+              {k:"A", t:"bin", a:"1110"},
+              {k:"Q", t:"bin", a:"1011"},
+              {k:"Q<sub>-1</sub>", t:"bin", a:"1"}
+            ],
+            why:"Q<sub>0</sub>Q<sub>-1</sub> = 11 → <b>no operation</b>, then arithmetic-shift A:Q:Q<sub>-1</sub> right one place."
+          },
+          {
+            label:"result",
+            fields:[
+              {k:"AQ (8 bits)", t:"bin", a:"11101011"},
+              {k:"decimal", t:"dec", a:"-21"}
+            ],
+            why:"After 4 passes the product is the register pair AQ, read as one 8-bit two's-complement number: 7 × -3 = -21."
+          }
+        ]
+      },
+      {
+        n:59,
+        asm:"10110 × 01011",
+        mode:"Sequential circuit binary multiplier · 5 passes",
+        tag:"sequential",
+        hint:"Both registers are five bits wide, so the product is ten. Track Q₋₁ carefully — a wrong Q₋₁ poisons every pass after it.",
+        note:"Q₋₁ is one bit of state that carries the whole recoding. If a trace goes wrong halfway, re-derive Q₋₁ first: it is always the bit that was in Q₀ immediately before the last shift.",
+        setup:[
+          {k:"M (multiplicand)", v:"10110"},
+          {k:"−M", v:"01010"},
+          {k:"A", v:"00000"},
+          {k:"Q (multiplier)", v:"01011"},
+          {k:"Q<sub>-1</sub>", v:"0"}
+        ],
+        steps:[
+          {
+            label:"pass 1",
+            fields:[
+              {k:"A", t:"bin", a:"00101"},
+              {k:"Q", t:"bin", a:"00101"},
+              {k:"Q<sub>-1</sub>", t:"bin", a:"1"}
+            ],
+            why:"Q<sub>0</sub>Q<sub>-1</sub> = 10 → <b>A ← A − M</b>, giving A = <code>01010</code>, then arithmetic-shift A:Q:Q<sub>-1</sub> right one place. The shift is one motion across all three registers: A's sign bit is copied into itself, A's LSb drops into Q's MSb, and Q's LSb drops into Q<sub>-1</sub>."
+          },
+          {
+            label:"pass 2",
+            fields:[
+              {k:"A", t:"bin", a:"00010"},
+              {k:"Q", t:"bin", a:"10010"},
+              {k:"Q<sub>-1</sub>", t:"bin", a:"1"}
+            ],
+            why:"Q<sub>0</sub>Q<sub>-1</sub> = 11 → <b>no operation</b>, then arithmetic-shift A:Q:Q<sub>-1</sub> right one place."
+          },
+          {
+            label:"pass 3",
+            fields:[
+              {k:"A", t:"bin", a:"11100"},
+              {k:"Q", t:"bin", a:"01001"},
+              {k:"Q<sub>-1</sub>", t:"bin", a:"0"}
+            ],
+            why:"Q<sub>0</sub>Q<sub>-1</sub> = 01 → <b>A ← A + M</b>, giving A = <code>11000</code>, then arithmetic-shift A:Q:Q<sub>-1</sub> right one place."
+          },
+          {
+            label:"pass 4",
+            fields:[
+              {k:"A", t:"bin", a:"00011"},
+              {k:"Q", t:"bin", a:"00100"},
+              {k:"Q<sub>-1</sub>", t:"bin", a:"1"}
+            ],
+            why:"Q<sub>0</sub>Q<sub>-1</sub> = 10 → <b>A ← A − M</b>, giving A = <code>00110</code>, then arithmetic-shift A:Q:Q<sub>-1</sub> right one place."
+          },
+          {
+            label:"pass 5",
+            fields:[
+              {k:"A", t:"bin", a:"11100"},
+              {k:"Q", t:"bin", a:"10010"},
+              {k:"Q<sub>-1</sub>", t:"bin", a:"0"}
+            ],
+            why:"Q<sub>0</sub>Q<sub>-1</sub> = 01 → <b>A ← A + M</b>, giving A = <code>11001</code>, then arithmetic-shift A:Q:Q<sub>-1</sub> right one place."
+          },
+          {
+            label:"result",
+            fields:[
+              {k:"AQ (10 bits)", t:"bin", a:"1110010010"},
+              {k:"decimal", t:"dec", a:"-110"}
+            ],
+            why:"After 5 passes the product is the register pair AQ, read as one 10-bit two's-complement number: -10 × 11 = -110."
+          }
+        ]
+      }
+    ]
+  },
+  {
+    id:"s8",
+    n:8,
+    part:"Module 10 · Division",
+    engine:"calc",
+    title:"Restoring Division",
+    kicker:"Section 8",
+    blurb:"Division by repeated subtraction, with the divisor added back whenever a pass overshoots. Trace A and Q to the end of every pass, then read the quotient and remainder out of the registers.",
+    primer:"\n<div class=\"f-block\">\n  <h3>Initialization</h3>\n  <ul>\n    <li>Clear A — it needs <b>one extra bit</b> beyond the operands, used as a sign bit</li>\n    <li>Q gets the dividend</li>\n    <li>M gets the divisor</li>\n  </ul>\n  <h3>Loop — once per dividend bit</h3>\n  <ul>\n    <li>Shift AQ <b>left</b> one place</li>\n    <li>Subtract: A ← A − M</li>\n    <li>If negative (A<sub>n</sub> = 1): restore A ← A + M, and Q<sub>0</sub> ← 0</li>\n    <li>Else: Q<sub>0</sub> ← 1</li>\n  </ul>\n  <p>Quotient ends up in Q, remainder in A; adjust signs afterwards as needed.</p>\n</div>\n<div class=\"f-block\">\n  <h3>Why \"restoring\"</h3>\n  <p>The subtraction is speculative. When it overshoots, the pass has to <i>put A back</i> before moving on — a wasted add. A pass that fails therefore costs two ALU operations, a pass that succeeds costs one.</p>\n  <h3>Reading the quotient</h3>\n  <p>Q<sub>0</sub> records the verdict of each pass: <b>1</b> = the divisor fitted, <b>0</b> = it did not and A was restored. Shifting left each pass walks those verdicts into place, so the quotient is just the sequence of answers.</p>\n  <h3>Self-check</h3>\n  <p>At the end of every pass, A must be smaller than M. If it isn't, a restore was missed.</p>\n</div>",
+    primerTitle:"The algorithm — and why a failed pass costs double",
+    items:[
+      {
+        n:60,
+        asm:"111 ÷ 011",
+        mode:"Restoring division · 3 passes",
+        tag:"restoring",
+        hint:"One pass per DIVIDEND bit, and every pass starts the same way: shift AQ left, then subtract M. The only decision is what to do when the result comes out negative.",
+        note:"A carries one extra bit beyond the operands purely so its MSb can act as a sign bit — that bit is the whole test. Restoring division always does the subtraction first and only asks questions afterwards, which is why a failed pass costs two ALU operations instead of one.",
+        setup:[
+          {k:"A", v:"0000"},
+          {k:"Q (dividend)", v:"111"},
+          {k:"M (divisor)", v:"0011"},
+          {k:"−M", v:"1101"},
+          {k:"A width", v:"3+1 = 4 bits"}
+        ],
+        steps:[
+          {
+            label:"pass 1",
+            fields:[
+              {k:"A", t:"bin", a:"0001"},
+              {k:"Q", t:"bin", a:"110"}
+            ],
+            why:"Shift AQ left → A = <code>0001</code>, Q = <code>11_</code>. Then A − M = <code>1110</code>: A<sub>n</sub> = 1, so the subtraction did not fit — restore with A ← A + M and set Q<sub>0</sub> ← 0."
+          },
+          {
+            label:"pass 2",
+            fields:[
+              {k:"A", t:"bin", a:"0000"},
+              {k:"Q", t:"bin", a:"101"}
+            ],
+            why:"Shift AQ left → A = <code>0011</code>, Q = <code>10_</code>. Then A − M = <code>0000</code>: A<sub>n</sub> = 0, so it fitted — keep the difference and set Q<sub>0</sub> ← 1."
+          },
+          {
+            label:"pass 3",
+            fields:[
+              {k:"A", t:"bin", a:"0001"},
+              {k:"Q", t:"bin", a:"010"}
+            ],
+            why:"Shift AQ left → A = <code>0001</code>, Q = <code>01_</code>. Then A − M = <code>1110</code>: A<sub>n</sub> = 1, so the subtraction did not fit — restore with A ← A + M and set Q<sub>0</sub> ← 0."
+          },
+          {
+            label:"result",
+            fields:[
+              {k:"quotient (decimal)", t:"dec", a:"2"},
+              {k:"remainder (decimal)", t:"dec", a:"1"}
+            ],
+            why:"Quotient is left in Q = <code>010</code> = 2, remainder in A = <code>0001</code> = 1. Check: 2 × 3 + 1 = 7 ✓"
+          }
+        ]
+      },
+      {
+        n:61,
+        asm:"01101 ÷ 00101",
+        mode:"Restoring division · 5 passes",
+        tag:"restoring",
+        hint:"The lecture's \"Try\". Five dividend bits, five passes. Pass 1 shifts a 0 into A, so the subtraction is guaranteed to fail — write it out anyway.",
+        note:"Three restores out of five passes here, each one a wasted add. Compare this trace pass-for-pass with problem 66, the identical division done non-restoringly, and you can see exactly which adds the non-restoring method deletes.",
+        setup:[
+          {k:"A", v:"000000"},
+          {k:"Q (dividend)", v:"01101"},
+          {k:"M (divisor)", v:"000101"},
+          {k:"−M", v:"111011"},
+          {k:"A width", v:"5+1 = 6 bits"}
+        ],
+        steps:[
+          {
+            label:"pass 1",
+            fields:[
+              {k:"A", t:"bin", a:"000000"},
+              {k:"Q", t:"bin", a:"11010"}
+            ],
+            why:"Shift AQ left → A = <code>000000</code>, Q = <code>1101_</code>. Then A − M = <code>111011</code>: A<sub>n</sub> = 1, so the subtraction did not fit — restore with A ← A + M and set Q<sub>0</sub> ← 0."
+          },
+          {
+            label:"pass 2",
+            fields:[
+              {k:"A", t:"bin", a:"000001"},
+              {k:"Q", t:"bin", a:"10100"}
+            ],
+            why:"Shift AQ left → A = <code>000001</code>, Q = <code>1010_</code>. Then A − M = <code>111100</code>: A<sub>n</sub> = 1, so the subtraction did not fit — restore with A ← A + M and set Q<sub>0</sub> ← 0."
+          },
+          {
+            label:"pass 3",
+            fields:[
+              {k:"A", t:"bin", a:"000011"},
+              {k:"Q", t:"bin", a:"01000"}
+            ],
+            why:"Shift AQ left → A = <code>000011</code>, Q = <code>0100_</code>. Then A − M = <code>111110</code>: A<sub>n</sub> = 1, so the subtraction did not fit — restore with A ← A + M and set Q<sub>0</sub> ← 0."
+          },
+          {
+            label:"pass 4",
+            fields:[
+              {k:"A", t:"bin", a:"000001"},
+              {k:"Q", t:"bin", a:"10001"}
+            ],
+            why:"Shift AQ left → A = <code>000110</code>, Q = <code>1000_</code>. Then A − M = <code>000001</code>: A<sub>n</sub> = 0, so it fitted — keep the difference and set Q<sub>0</sub> ← 1."
+          },
+          {
+            label:"pass 5",
+            fields:[
+              {k:"A", t:"bin", a:"000011"},
+              {k:"Q", t:"bin", a:"00010"}
+            ],
+            why:"Shift AQ left → A = <code>000011</code>, Q = <code>0001_</code>. Then A − M = <code>111110</code>: A<sub>n</sub> = 1, so the subtraction did not fit — restore with A ← A + M and set Q<sub>0</sub> ← 0."
+          },
+          {
+            label:"result",
+            fields:[
+              {k:"quotient (decimal)", t:"dec", a:"2"},
+              {k:"remainder (decimal)", t:"dec", a:"3"}
+            ],
+            why:"Quotient is left in Q = <code>00010</code> = 2, remainder in A = <code>000011</code> = 3. Check: 2 × 5 + 3 = 13 ✓"
+          }
+        ]
+      },
+      {
+        n:62,
+        asm:"1011 ÷ 0011",
+        mode:"Restoring division · 4 passes",
+        tag:"restoring",
+        hint:"11 ÷ 3. The quotient will need two 1s in it — if your Q<sub>0</sub> never gets set, you subtracted in the wrong direction.",
+        note:"Q<sub>0</sub> = 1 means \"the divisor fitted this time\", and Q<sub>0</sub> = 0 means \"it didn't, and I put A back\". The quotient is literally a record of which passes succeeded.",
+        setup:[
+          {k:"A", v:"00000"},
+          {k:"Q (dividend)", v:"1011"},
+          {k:"M (divisor)", v:"00011"},
+          {k:"−M", v:"11101"},
+          {k:"A width", v:"4+1 = 5 bits"}
+        ],
+        steps:[
+          {
+            label:"pass 1",
+            fields:[
+              {k:"A", t:"bin", a:"00001"},
+              {k:"Q", t:"bin", a:"0110"}
+            ],
+            why:"Shift AQ left → A = <code>00001</code>, Q = <code>011_</code>. Then A − M = <code>11110</code>: A<sub>n</sub> = 1, so the subtraction did not fit — restore with A ← A + M and set Q<sub>0</sub> ← 0."
+          },
+          {
+            label:"pass 2",
+            fields:[
+              {k:"A", t:"bin", a:"00010"},
+              {k:"Q", t:"bin", a:"1100"}
+            ],
+            why:"Shift AQ left → A = <code>00010</code>, Q = <code>110_</code>. Then A − M = <code>11111</code>: A<sub>n</sub> = 1, so the subtraction did not fit — restore with A ← A + M and set Q<sub>0</sub> ← 0."
+          },
+          {
+            label:"pass 3",
+            fields:[
+              {k:"A", t:"bin", a:"00010"},
+              {k:"Q", t:"bin", a:"1001"}
+            ],
+            why:"Shift AQ left → A = <code>00101</code>, Q = <code>100_</code>. Then A − M = <code>00010</code>: A<sub>n</sub> = 0, so it fitted — keep the difference and set Q<sub>0</sub> ← 1."
+          },
+          {
+            label:"pass 4",
+            fields:[
+              {k:"A", t:"bin", a:"00010"},
+              {k:"Q", t:"bin", a:"0011"}
+            ],
+            why:"Shift AQ left → A = <code>00101</code>, Q = <code>001_</code>. Then A − M = <code>00010</code>: A<sub>n</sub> = 0, so it fitted — keep the difference and set Q<sub>0</sub> ← 1."
+          },
+          {
+            label:"result",
+            fields:[
+              {k:"quotient (decimal)", t:"dec", a:"3"},
+              {k:"remainder (decimal)", t:"dec", a:"2"}
+            ],
+            why:"Quotient is left in Q = <code>0011</code> = 3, remainder in A = <code>00010</code> = 2. Check: 3 × 3 + 2 = 11 ✓"
+          }
+        ]
+      },
+      {
+        n:63,
+        asm:"1001 ÷ 0010",
+        mode:"Restoring division · 4 passes",
+        tag:"restoring",
+        hint:"Dividing by 2 — the quotient should come out as the dividend shifted right by one, which gives you a free check on the whole trace.",
+        note:"A power-of-two divisor makes the algorithm transparent: each pass either fits exactly or not at all, and the quotient reads out as a plain right-shift. Use this shape to check your understanding of the shift direction.",
+        setup:[
+          {k:"A", v:"00000"},
+          {k:"Q (dividend)", v:"1001"},
+          {k:"M (divisor)", v:"00010"},
+          {k:"−M", v:"11110"},
+          {k:"A width", v:"4+1 = 5 bits"}
+        ],
+        steps:[
+          {
+            label:"pass 1",
+            fields:[
+              {k:"A", t:"bin", a:"00001"},
+              {k:"Q", t:"bin", a:"0010"}
+            ],
+            why:"Shift AQ left → A = <code>00001</code>, Q = <code>001_</code>. Then A − M = <code>11111</code>: A<sub>n</sub> = 1, so the subtraction did not fit — restore with A ← A + M and set Q<sub>0</sub> ← 0."
+          },
+          {
+            label:"pass 2",
+            fields:[
+              {k:"A", t:"bin", a:"00000"},
+              {k:"Q", t:"bin", a:"0101"}
+            ],
+            why:"Shift AQ left → A = <code>00010</code>, Q = <code>010_</code>. Then A − M = <code>00000</code>: A<sub>n</sub> = 0, so it fitted — keep the difference and set Q<sub>0</sub> ← 1."
+          },
+          {
+            label:"pass 3",
+            fields:[
+              {k:"A", t:"bin", a:"00000"},
+              {k:"Q", t:"bin", a:"1010"}
+            ],
+            why:"Shift AQ left → A = <code>00000</code>, Q = <code>101_</code>. Then A − M = <code>11110</code>: A<sub>n</sub> = 1, so the subtraction did not fit — restore with A ← A + M and set Q<sub>0</sub> ← 0."
+          },
+          {
+            label:"pass 4",
+            fields:[
+              {k:"A", t:"bin", a:"00001"},
+              {k:"Q", t:"bin", a:"0100"}
+            ],
+            why:"Shift AQ left → A = <code>00001</code>, Q = <code>010_</code>. Then A − M = <code>11111</code>: A<sub>n</sub> = 1, so the subtraction did not fit — restore with A ← A + M and set Q<sub>0</sub> ← 0."
+          },
+          {
+            label:"result",
+            fields:[
+              {k:"quotient (decimal)", t:"dec", a:"4"},
+              {k:"remainder (decimal)", t:"dec", a:"1"}
+            ],
+            why:"Quotient is left in Q = <code>0100</code> = 4, remainder in A = <code>00001</code> = 1. Check: 4 × 2 + 1 = 9 ✓"
+          }
+        ]
+      },
+      {
+        n:64,
+        asm:"01110 ÷ 00011",
+        mode:"Restoring division · 5 passes",
+        tag:"restoring",
+        hint:"14 ÷ 3 across five passes. Keep A at six bits the whole way — dropping the sign bit is the fastest way to lose the trace.",
+        note:"Note the remainder never grows past the divisor: if A ever ends a pass holding a value ≥ M, a restore was missed. That invariant is the cheapest way to catch an error mid-trace.",
+        setup:[
+          {k:"A", v:"000000"},
+          {k:"Q (dividend)", v:"01110"},
+          {k:"M (divisor)", v:"000011"},
+          {k:"−M", v:"111101"},
+          {k:"A width", v:"5+1 = 6 bits"}
+        ],
+        steps:[
+          {
+            label:"pass 1",
+            fields:[
+              {k:"A", t:"bin", a:"000000"},
+              {k:"Q", t:"bin", a:"11100"}
+            ],
+            why:"Shift AQ left → A = <code>000000</code>, Q = <code>1110_</code>. Then A − M = <code>111101</code>: A<sub>n</sub> = 1, so the subtraction did not fit — restore with A ← A + M and set Q<sub>0</sub> ← 0."
+          },
+          {
+            label:"pass 2",
+            fields:[
+              {k:"A", t:"bin", a:"000001"},
+              {k:"Q", t:"bin", a:"11000"}
+            ],
+            why:"Shift AQ left → A = <code>000001</code>, Q = <code>1100_</code>. Then A − M = <code>111110</code>: A<sub>n</sub> = 1, so the subtraction did not fit — restore with A ← A + M and set Q<sub>0</sub> ← 0."
+          },
+          {
+            label:"pass 3",
+            fields:[
+              {k:"A", t:"bin", a:"000000"},
+              {k:"Q", t:"bin", a:"10001"}
+            ],
+            why:"Shift AQ left → A = <code>000011</code>, Q = <code>1000_</code>. Then A − M = <code>000000</code>: A<sub>n</sub> = 0, so it fitted — keep the difference and set Q<sub>0</sub> ← 1."
+          },
+          {
+            label:"pass 4",
+            fields:[
+              {k:"A", t:"bin", a:"000001"},
+              {k:"Q", t:"bin", a:"00010"}
+            ],
+            why:"Shift AQ left → A = <code>000001</code>, Q = <code>0001_</code>. Then A − M = <code>111110</code>: A<sub>n</sub> = 1, so the subtraction did not fit — restore with A ← A + M and set Q<sub>0</sub> ← 0."
+          },
+          {
+            label:"pass 5",
+            fields:[
+              {k:"A", t:"bin", a:"000010"},
+              {k:"Q", t:"bin", a:"00100"}
+            ],
+            why:"Shift AQ left → A = <code>000010</code>, Q = <code>0010_</code>. Then A − M = <code>111111</code>: A<sub>n</sub> = 1, so the subtraction did not fit — restore with A ← A + M and set Q<sub>0</sub> ← 0."
+          },
+          {
+            label:"result",
+            fields:[
+              {k:"quotient (decimal)", t:"dec", a:"4"},
+              {k:"remainder (decimal)", t:"dec", a:"2"}
+            ],
+            why:"Quotient is left in Q = <code>00100</code> = 4, remainder in A = <code>000010</code> = 2. Check: 4 × 3 + 2 = 14 ✓"
+          }
+        ]
+      }
+    ]
+  },
+  {
+    id:"s9",
+    n:9,
+    part:"Module 10 · Division",
+    engine:"calc",
+    title:"Non-Restoring Division",
+    kicker:"Section 9",
+    blurb:"The same divisions as Section 8, with the restore deferred to the very end. Same quotients, half the ALU work — and two traps that the restoring method never sets for you.",
+    primer:"\n<div class=\"f-block\">\n  <h3>Loop — once per dividend bit</h3>\n  <ul>\n    <li>If the A you are carrying in is <b>negative</b> (A<sub>n</sub> = 1):<br>shift AQ left, then A ← A + M</li>\n    <li>Else:<br>shift AQ left, then A ← A − M</li>\n    <li>Either way: Q<sub>0</sub> ← <b>complement</b> of A's MSb</li>\n  </ul>\n  <h3>After the loop</h3>\n  <ul>\n    <li>If A<sub>n</sub> = 1, restore once: A ← A + M</li>\n    <li>Quotient in Q, remainder in A</li>\n  </ul>\n</div>\n<div class=\"f-block\">\n  <h3>Why \"non-restoring\"</h3>\n  <p>A negative A is left standing. Instead of undoing it now with an add and re-subtracting next pass, the next pass simply adds — which is algebraically the same thing, one operation cheaper. The debt is settled once, at the very end.</p>\n  <h3>The two traps</h3>\n  <ul>\n    <li>The add/subtract decision reads the <b>incoming</b> A, from the end of the previous pass — decided <i>before</i> the shift, applied <i>after</i> it.</li>\n    <li>Q<sub>0</sub> is the <b>complement</b> of the sign bit, not the sign bit.</li>\n  </ul>\n</div>",
+    primerTitle:"The algorithm — deferred restoration",
+    items:[
+      {
+        n:65,
+        asm:"111 ÷ 011",
+        mode:"Non-restoring division · 3 passes + restore",
+        tag:"non-restoring",
+        hint:"The decision is made BEFORE the shift, and it looks at the A you are carrying in from last pass — not the one you are about to compute. Get that ordering wrong and every pass after it is wrong.",
+        note:"Restoring asks \"did it fit?\" after subtracting and undoes the damage; non-restoring leaves A negative and cancels the error next pass by adding instead of subtracting. Same quotient, one ALU operation per pass instead of two.",
+        setup:[
+          {k:"A", v:"0000"},
+          {k:"Q (dividend)", v:"111"},
+          {k:"M (divisor)", v:"0011"},
+          {k:"−M", v:"1101"},
+          {k:"A width", v:"3+1 = 4 bits"}
+        ],
+        steps:[
+          {
+            label:"pass 1",
+            fields:[
+              {k:"A", t:"bin", a:"1110"},
+              {k:"Q", t:"bin", a:"110"}
+            ],
+            why:"Previous A was non-negative (A<sub>n</sub> = 0), so this pass SUBTRACTS. Shift AQ left → A = <code>0001</code>, then <b>A ← A − M</b> = <code>1110</code>. Q<sub>0</sub> ← complement of A<sub>n</sub> = 0."
+          },
+          {
+            label:"pass 2",
+            fields:[
+              {k:"A", t:"bin", a:"0000"},
+              {k:"Q", t:"bin", a:"101"}
+            ],
+            why:"Previous A was negative (A<sub>n</sub> = 1), so this pass ADDS. Shift AQ left → A = <code>1101</code>, then <b>A ← A + M</b> = <code>0000</code>. Q<sub>0</sub> ← complement of A<sub>n</sub> = 1."
+          },
+          {
+            label:"pass 3",
+            fields:[
+              {k:"A", t:"bin", a:"1110"},
+              {k:"Q", t:"bin", a:"010"}
+            ],
+            why:"Previous A was non-negative (A<sub>n</sub> = 0), so this pass SUBTRACTS. Shift AQ left → A = <code>0001</code>, then <b>A ← A − M</b> = <code>1110</code>. Q<sub>0</sub> ← complement of A<sub>n</sub> = 0."
+          },
+          {
+            label:"final restore",
+            fields:[
+              {k:"A", t:"bin", a:"0001"}
+            ],
+            why:"The last pass left A = <code>1110</code> with A<sub>n</sub> = 1, so one closing correction is owed: A ← A + M = <code>0001</code>. The quotient is untouched by this step."
+          },
+          {
+            label:"result",
+            fields:[
+              {k:"quotient (decimal)", t:"dec", a:"2"},
+              {k:"remainder (decimal)", t:"dec", a:"1"}
+            ],
+            why:"Quotient Q = <code>010</code> = 2, remainder A = <code>0001</code> = 1. Check: 2 × 3 + 1 = 7 ✓"
+          }
+        ]
+      },
+      {
+        n:66,
+        asm:"01101 ÷ 00101",
+        mode:"Non-restoring division · 5 passes + restore",
+        tag:"non-restoring",
+        hint:"The same division as problem 61, done the other way. Q₀ is no longer \"did it fit\" — it is the COMPLEMENT of A's sign bit after the operation.",
+        note:"Put this trace beside problem 61: identical quotient, identical remainder, identical Q column — but A wanders through negative values that restoring division would have erased. Only the closing restore brings A back to a true remainder.<br><br><b>Deck errata:</b> NLec 19's \"Try\" table prints the 3rd-pass A as <code>11110</code>, five digits — A is six bits wide here, so it should read <code>111110</code>. The value is right, a leading digit is just missing.",
+        setup:[
+          {k:"A", v:"000000"},
+          {k:"Q (dividend)", v:"01101"},
+          {k:"M (divisor)", v:"000101"},
+          {k:"−M", v:"111011"},
+          {k:"A width", v:"5+1 = 6 bits"}
+        ],
+        steps:[
+          {
+            label:"pass 1",
+            fields:[
+              {k:"A", t:"bin", a:"111011"},
+              {k:"Q", t:"bin", a:"11010"}
+            ],
+            why:"Previous A was non-negative (A<sub>n</sub> = 0), so this pass SUBTRACTS. Shift AQ left → A = <code>000000</code>, then <b>A ← A − M</b> = <code>111011</code>. Q<sub>0</sub> ← complement of A<sub>n</sub> = 0."
+          },
+          {
+            label:"pass 2",
+            fields:[
+              {k:"A", t:"bin", a:"111100"},
+              {k:"Q", t:"bin", a:"10100"}
+            ],
+            why:"Previous A was negative (A<sub>n</sub> = 1), so this pass ADDS. Shift AQ left → A = <code>110111</code>, then <b>A ← A + M</b> = <code>111100</code>. Q<sub>0</sub> ← complement of A<sub>n</sub> = 0."
+          },
+          {
+            label:"pass 3",
+            fields:[
+              {k:"A", t:"bin", a:"111110"},
+              {k:"Q", t:"bin", a:"01000"}
+            ],
+            why:"Previous A was negative (A<sub>n</sub> = 1), so this pass ADDS. Shift AQ left → A = <code>111001</code>, then <b>A ← A + M</b> = <code>111110</code>. Q<sub>0</sub> ← complement of A<sub>n</sub> = 0."
+          },
+          {
+            label:"pass 4",
+            fields:[
+              {k:"A", t:"bin", a:"000001"},
+              {k:"Q", t:"bin", a:"10001"}
+            ],
+            why:"Previous A was negative (A<sub>n</sub> = 1), so this pass ADDS. Shift AQ left → A = <code>111100</code>, then <b>A ← A + M</b> = <code>000001</code>. Q<sub>0</sub> ← complement of A<sub>n</sub> = 1."
+          },
+          {
+            label:"pass 5",
+            fields:[
+              {k:"A", t:"bin", a:"111110"},
+              {k:"Q", t:"bin", a:"00010"}
+            ],
+            why:"Previous A was non-negative (A<sub>n</sub> = 0), so this pass SUBTRACTS. Shift AQ left → A = <code>000011</code>, then <b>A ← A − M</b> = <code>111110</code>. Q<sub>0</sub> ← complement of A<sub>n</sub> = 0."
+          },
+          {
+            label:"final restore",
+            fields:[
+              {k:"A", t:"bin", a:"000011"}
+            ],
+            why:"The last pass left A = <code>111110</code> with A<sub>n</sub> = 1, so one closing correction is owed: A ← A + M = <code>000011</code>. The quotient is untouched by this step."
+          },
+          {
+            label:"result",
+            fields:[
+              {k:"quotient (decimal)", t:"dec", a:"2"},
+              {k:"remainder (decimal)", t:"dec", a:"3"}
+            ],
+            why:"Quotient Q = <code>00010</code> = 2, remainder A = <code>000011</code> = 3. Check: 2 × 5 + 3 = 13 ✓"
+          }
+        ]
+      },
+      {
+        n:67,
+        asm:"1011 ÷ 0011",
+        mode:"Non-restoring division · 4 passes + restore",
+        tag:"non-restoring",
+        hint:"11 ÷ 3 again. Note that a negative A is not an error here — it is information carried into the next pass.",
+        note:"The final restore is not optional bookkeeping: without it, A is off by exactly M whenever the last pass went negative. The quotient, though, is already final before the restore runs.",
+        setup:[
+          {k:"A", v:"00000"},
+          {k:"Q (dividend)", v:"1011"},
+          {k:"M (divisor)", v:"00011"},
+          {k:"−M", v:"11101"},
+          {k:"A width", v:"4+1 = 5 bits"}
+        ],
+        steps:[
+          {
+            label:"pass 1",
+            fields:[
+              {k:"A", t:"bin", a:"11110"},
+              {k:"Q", t:"bin", a:"0110"}
+            ],
+            why:"Previous A was non-negative (A<sub>n</sub> = 0), so this pass SUBTRACTS. Shift AQ left → A = <code>00001</code>, then <b>A ← A − M</b> = <code>11110</code>. Q<sub>0</sub> ← complement of A<sub>n</sub> = 0."
+          },
+          {
+            label:"pass 2",
+            fields:[
+              {k:"A", t:"bin", a:"11111"},
+              {k:"Q", t:"bin", a:"1100"}
+            ],
+            why:"Previous A was negative (A<sub>n</sub> = 1), so this pass ADDS. Shift AQ left → A = <code>11100</code>, then <b>A ← A + M</b> = <code>11111</code>. Q<sub>0</sub> ← complement of A<sub>n</sub> = 0."
+          },
+          {
+            label:"pass 3",
+            fields:[
+              {k:"A", t:"bin", a:"00010"},
+              {k:"Q", t:"bin", a:"1001"}
+            ],
+            why:"Previous A was negative (A<sub>n</sub> = 1), so this pass ADDS. Shift AQ left → A = <code>11111</code>, then <b>A ← A + M</b> = <code>00010</code>. Q<sub>0</sub> ← complement of A<sub>n</sub> = 1."
+          },
+          {
+            label:"pass 4",
+            fields:[
+              {k:"A", t:"bin", a:"00010"},
+              {k:"Q", t:"bin", a:"0011"}
+            ],
+            why:"Previous A was non-negative (A<sub>n</sub> = 0), so this pass SUBTRACTS. Shift AQ left → A = <code>00101</code>, then <b>A ← A − M</b> = <code>00010</code>. Q<sub>0</sub> ← complement of A<sub>n</sub> = 1."
+          },
+          {
+            label:"final restore",
+            fields:[
+              {k:"A", t:"bin", a:"00010"}
+            ],
+            why:"The last pass left A = <code>00010</code> with A<sub>n</sub> = 0, so no closing correction is owed and A stays as it is."
+          },
+          {
+            label:"result",
+            fields:[
+              {k:"quotient (decimal)", t:"dec", a:"3"},
+              {k:"remainder (decimal)", t:"dec", a:"2"}
+            ],
+            why:"Quotient Q = <code>0011</code> = 3, remainder A = <code>00010</code> = 2. Check: 3 × 3 + 2 = 11 ✓"
+          }
+        ]
+      },
+      {
+        n:68,
+        asm:"1001 ÷ 0010",
+        mode:"Non-restoring division · 4 passes + restore",
+        tag:"non-restoring",
+        hint:"Dividing by 2. Watch whether the closing restore is owed at all — it is not always.",
+        note:"When the last pass lands non-negative, the restore step is skipped entirely. That's the best case: n passes, n ALU operations, nothing to undo.",
+        setup:[
+          {k:"A", v:"00000"},
+          {k:"Q (dividend)", v:"1001"},
+          {k:"M (divisor)", v:"00010"},
+          {k:"−M", v:"11110"},
+          {k:"A width", v:"4+1 = 5 bits"}
+        ],
+        steps:[
+          {
+            label:"pass 1",
+            fields:[
+              {k:"A", t:"bin", a:"11111"},
+              {k:"Q", t:"bin", a:"0010"}
+            ],
+            why:"Previous A was non-negative (A<sub>n</sub> = 0), so this pass SUBTRACTS. Shift AQ left → A = <code>00001</code>, then <b>A ← A − M</b> = <code>11111</code>. Q<sub>0</sub> ← complement of A<sub>n</sub> = 0."
+          },
+          {
+            label:"pass 2",
+            fields:[
+              {k:"A", t:"bin", a:"00000"},
+              {k:"Q", t:"bin", a:"0101"}
+            ],
+            why:"Previous A was negative (A<sub>n</sub> = 1), so this pass ADDS. Shift AQ left → A = <code>11110</code>, then <b>A ← A + M</b> = <code>00000</code>. Q<sub>0</sub> ← complement of A<sub>n</sub> = 1."
+          },
+          {
+            label:"pass 3",
+            fields:[
+              {k:"A", t:"bin", a:"11110"},
+              {k:"Q", t:"bin", a:"1010"}
+            ],
+            why:"Previous A was non-negative (A<sub>n</sub> = 0), so this pass SUBTRACTS. Shift AQ left → A = <code>00000</code>, then <b>A ← A − M</b> = <code>11110</code>. Q<sub>0</sub> ← complement of A<sub>n</sub> = 0."
+          },
+          {
+            label:"pass 4",
+            fields:[
+              {k:"A", t:"bin", a:"11111"},
+              {k:"Q", t:"bin", a:"0100"}
+            ],
+            why:"Previous A was negative (A<sub>n</sub> = 1), so this pass ADDS. Shift AQ left → A = <code>11101</code>, then <b>A ← A + M</b> = <code>11111</code>. Q<sub>0</sub> ← complement of A<sub>n</sub> = 0."
+          },
+          {
+            label:"final restore",
+            fields:[
+              {k:"A", t:"bin", a:"00001"}
+            ],
+            why:"The last pass left A = <code>11111</code> with A<sub>n</sub> = 1, so one closing correction is owed: A ← A + M = <code>00001</code>. The quotient is untouched by this step."
+          },
+          {
+            label:"result",
+            fields:[
+              {k:"quotient (decimal)", t:"dec", a:"4"},
+              {k:"remainder (decimal)", t:"dec", a:"1"}
+            ],
+            why:"Quotient Q = <code>0100</code> = 4, remainder A = <code>00001</code> = 1. Check: 4 × 2 + 1 = 9 ✓"
+          }
+        ]
+      },
+      {
+        n:69,
+        asm:"01110 ÷ 00011",
+        mode:"Non-restoring division · 5 passes + restore",
+        tag:"non-restoring",
+        hint:"14 ÷ 3 over five passes plus the closing check. Before each pass, look up at the A you just wrote and ask only one question: is its top bit 1?",
+        note:"Five passes, five ALU operations, and at most one correction at the end — against restoring division's worst case of ten. That ratio is the entire argument for the non-restoring method.",
+        setup:[
+          {k:"A", v:"000000"},
+          {k:"Q (dividend)", v:"01110"},
+          {k:"M (divisor)", v:"000011"},
+          {k:"−M", v:"111101"},
+          {k:"A width", v:"5+1 = 6 bits"}
+        ],
+        steps:[
+          {
+            label:"pass 1",
+            fields:[
+              {k:"A", t:"bin", a:"111101"},
+              {k:"Q", t:"bin", a:"11100"}
+            ],
+            why:"Previous A was non-negative (A<sub>n</sub> = 0), so this pass SUBTRACTS. Shift AQ left → A = <code>000000</code>, then <b>A ← A − M</b> = <code>111101</code>. Q<sub>0</sub> ← complement of A<sub>n</sub> = 0."
+          },
+          {
+            label:"pass 2",
+            fields:[
+              {k:"A", t:"bin", a:"111110"},
+              {k:"Q", t:"bin", a:"11000"}
+            ],
+            why:"Previous A was negative (A<sub>n</sub> = 1), so this pass ADDS. Shift AQ left → A = <code>111011</code>, then <b>A ← A + M</b> = <code>111110</code>. Q<sub>0</sub> ← complement of A<sub>n</sub> = 0."
+          },
+          {
+            label:"pass 3",
+            fields:[
+              {k:"A", t:"bin", a:"000000"},
+              {k:"Q", t:"bin", a:"10001"}
+            ],
+            why:"Previous A was negative (A<sub>n</sub> = 1), so this pass ADDS. Shift AQ left → A = <code>111101</code>, then <b>A ← A + M</b> = <code>000000</code>. Q<sub>0</sub> ← complement of A<sub>n</sub> = 1."
+          },
+          {
+            label:"pass 4",
+            fields:[
+              {k:"A", t:"bin", a:"111110"},
+              {k:"Q", t:"bin", a:"00010"}
+            ],
+            why:"Previous A was non-negative (A<sub>n</sub> = 0), so this pass SUBTRACTS. Shift AQ left → A = <code>000001</code>, then <b>A ← A − M</b> = <code>111110</code>. Q<sub>0</sub> ← complement of A<sub>n</sub> = 0."
+          },
+          {
+            label:"pass 5",
+            fields:[
+              {k:"A", t:"bin", a:"111111"},
+              {k:"Q", t:"bin", a:"00100"}
+            ],
+            why:"Previous A was negative (A<sub>n</sub> = 1), so this pass ADDS. Shift AQ left → A = <code>111100</code>, then <b>A ← A + M</b> = <code>111111</code>. Q<sub>0</sub> ← complement of A<sub>n</sub> = 0."
+          },
+          {
+            label:"final restore",
+            fields:[
+              {k:"A", t:"bin", a:"000010"}
+            ],
+            why:"The last pass left A = <code>111111</code> with A<sub>n</sub> = 1, so one closing correction is owed: A ← A + M = <code>000010</code>. The quotient is untouched by this step."
+          },
+          {
+            label:"result",
+            fields:[
+              {k:"quotient (decimal)", t:"dec", a:"4"},
+              {k:"remainder (decimal)", t:"dec", a:"2"}
+            ],
+            why:"Quotient Q = <code>00100</code> = 4, remainder A = <code>000010</code> = 2. Check: 4 × 3 + 2 = 14 ✓"
+          }
+        ]
+      }
     ]
   }
 ];
@@ -805,13 +2643,55 @@ function linesMatch(userText, canonicalHtml){
 }
 
 /* ======================================================================
+   ANSWER CHECKING (calc cards) — one normalizer per field type. Unlike the
+   RTN checker these ARE order-sensitive: a binary string means nothing if
+   its digits are shuffled.
+   ====================================================================== */
+const DASHES = /[−–—‐‑]/g;   // −, –, —, ‐, ‑ → plain hyphen
+
+// keep only 0s and 1s, so "A: 0001", "0001", "0 0 0 1" all agree
+function normBin(s){ return String(s).replace(/[^01]/g, ''); }
+
+// signed-digit strings: "+1-1+1-1", "1 -1 1 -1" and "+1, -1, +1, -1" all agree
+function normRecode(s){
+  const out = [];
+  const re = /([+-]?)\s*(\d)/g;
+  let m, str = String(s).replace(DASHES, '-');
+  while((m = re.exec(str))) out.push(m[2] === '0' ? '0' : (m[1] === '-' ? '-' : '+') + m[2]);
+  return out.join('');
+}
+
+function normDec(s){
+  const t = String(s).replace(DASHES, '-').replace(/[\s,_]/g, '');
+  return /^[+-]?\d+$/.test(t) ? String(parseInt(t, 10)) : t.toLowerCase();
+}
+
+const NORMALIZERS = { bin: normBin, recode: normRecode, dec: normDec };
+
+function fieldMatches(userText, field){
+  const norm = NORMALIZERS[field.t] || normBin;
+  const got = norm(userText);
+  if(got === '') return false;
+  return [field.a].concat(field.alt || []).some(c => norm(c) === got);
+}
+
+/* ======================================================================
    RENDER
    ====================================================================== */
 const app = document.getElementById('app');
 const navSections = document.getElementById('navSections');
 
+let lastPart = null;
+
 SECTIONS.forEach(section=>{
-  // nav
+  // nav — a heading whenever we cross into a new part of the course
+  if(section.part && section.part !== lastPart){
+    lastPart = section.part;
+    const partEl = document.createElement('div');
+    partEl.className = 'nav-part';
+    partEl.textContent = section.part;
+    navSections.appendChild(partEl);
+  }
   const navSec = document.createElement('div');
   navSec.className='nav-section';
   navSec.innerHTML = `<div class="nav-section-title">${section.kicker}</div><ul class="nav-list"></ul>`;
@@ -819,7 +2699,9 @@ SECTIONS.forEach(section=>{
   section.items.forEach(item=>{
     const li = document.createElement('li');
     li.className='nav-item';
-    li.innerHTML = `<a href="#item-${item.n}" data-n="${item.n}" class="${item.invalid?'invalid':''}${doneSet.has(item.n)?' done':''}"><span class="num">${String(item.n).padStart(2,'0')}</span>${item.asm}</a>`;
+    // the tag span is always emitted (empty when unused) so its margin-left:auto
+    // keeps the done dot pinned right whether or not the item is tagged
+    li.innerHTML = `<a href="#item-${item.n}" data-n="${item.n}" class="${item.invalid?'invalid':''}${doneSet.has(item.n)?' done':''}"><span class="num">${String(item.n).padStart(2,'0')}</span><span class="nav-label">${item.asm}</span><span class="nav-tag">${item.tag||''}</span></a>`;
     ul.appendChild(li);
   });
   navSections.appendChild(navSec);
@@ -828,9 +2710,15 @@ SECTIONS.forEach(section=>{
   const head = document.createElement('div');
   head.className='section-head';
   head.id = section.id;
-  head.innerHTML = `<div class="kicker">${section.kicker} · ${section.items.length} instructions</div>
+  const unit = section.engine === 'calc' ? 'problems' : 'instructions';
+  head.innerHTML = `<div class="kicker">${section.part ? section.part + ' · ' : ''}${section.kicker} · ${section.items.length} ${unit}</div>
     <h2>${section.title}</h2>
-    <p>${section.blurb}</p><hr>`;
+    <p>${section.blurb}</p>
+    ${section.primer ? `<details class="foundation primer">
+      <summary>${section.primerTitle}<span class="tag">reference</span></summary>
+      <div class="foundation-body"><div class="foundation-grid">${section.primer}</div></div>
+    </details>` : ''}
+    <hr>`;
   app.appendChild(head);
 
   section.items.forEach(item=>{
@@ -854,7 +2742,7 @@ SECTIONS.forEach(section=>{
       ${item.extension ? `<div class="ext-note">⚡ ${item.extension}</div>` : ''}
       <button class="hint-toggle" type="button">Show thinking prompt</button>
       <div class="hint-body">${item.hint}</div>
-      ${item.invalid ? renderInvalidBlock(item) : renderStepper(item)}
+      ${item.invalid ? renderInvalidBlock(item) : (item.steps ? renderCalcStepper(item) : renderStepper(item))}
     `;
     app.appendChild(card);
 
@@ -868,6 +2756,8 @@ SECTIONS.forEach(section=>{
 
     if(item.invalid){
       wireInvalid(card, item);
+    } else if(item.steps){
+      wireCalcStepper(card, item);
     } else {
       wireStepper(card, item);
     }
@@ -883,6 +2773,23 @@ function renderStepper(item){
         <button class="btn secondary step-reset" type="button">↻ Reset this instruction</button>
       </div>
       <div class="rtn-history"></div>
+      <div class="active-row"></div>
+      <div class="note-box">💡 ${item.note}</div>
+    </div>
+  `;
+}
+
+function renderCalcStepper(item){
+  const chips = (item.setup || [])
+    .map(c => `<span class="setup-chip"><b>${c.k}</b>${c.v}</span>`).join('');
+  return `
+    <div class="stepper">
+      ${chips ? `<div class="setup-chips">${chips}</div>` : ''}
+      <div class="stepper-controls">
+        <span class="cycle-count">0 / ${item.steps.length} steps</span>
+        <button class="btn secondary step-reset" type="button">↻ Reset this problem</button>
+      </div>
+      <div class="calc-history"></div>
       <div class="active-row"></div>
       <div class="note-box">💡 ${item.note}</div>
     </div>
@@ -1003,6 +2910,137 @@ function wireStepper(card, item){
   renderActive();
 }
 
+/* ======================================================================
+   CALC STEPPER — same one-step-at-a-time contract as wireStepper, but a
+   step can ask for several registers at once (A, Q, Q-1 …), and every
+   committed step carries the reasoning that produced it.
+   ====================================================================== */
+function buildCalcHistoryHTML(step, status){
+  const kv = step.fields
+    .map(f => `<span class="kv"><i>${f.k}</i>${f.a}</span>`).join('');
+  const pill = status === 'correct'
+    ? `<span class="tag-pill correct">✓ correct</span>`
+    : `<span class="tag-pill revealed">⟲ revealed</span>`;
+  return `<div class="calc-hist">
+      <div class="calc-hist-top">
+        <span class="ln">${step.label}</span>
+        <span class="code">${kv}</span>
+        <span class="st">${pill}</span>
+      </div>
+      ${step.why ? `<div class="why">${step.why}</div>` : ''}
+    </div>`;
+}
+
+function wireCalcStepper(card, item){
+  let idx = 0;
+  let attempts = 0;
+  const historyWrap = card.querySelector('.calc-history');
+  const activeRow   = card.querySelector('.active-row');
+  const counter     = card.querySelector('.cycle-count');
+  const resetBtn    = card.querySelector('.step-reset');
+  const noteBox     = card.querySelector('.note-box');
+
+  function renderActive(focusInput){
+    attempts = 0;
+    if(idx >= item.steps.length){
+      activeRow.innerHTML = '';
+      counter.textContent = `${item.steps.length} / ${item.steps.length} steps`;
+      noteBox.classList.add('show');
+      markDone(item.n);
+      return;
+    }
+    counter.textContent = `${idx} / ${item.steps.length} steps`;
+    const step = item.steps[idx];
+    activeRow.innerHTML = `
+      <div class="calc-step-label">${step.label}</div>
+      <div class="calc-row">
+        ${step.fields.map((f,i)=>`
+          <div class="calc-field">
+            <span class="fk">${f.k}</span>
+            <input type="text" class="calc-input" data-i="${i}" autocomplete="off"
+                   spellcheck="false" inputmode="text"
+                   placeholder="${f.ph ? f.ph : ''}">
+          </div>`).join('')}
+        <button class="btn check-btn" type="button">Check</button>
+      </div>
+      <div class="feedback-msg"></div>
+      <div class="row-actions"><button class="btn secondary reveal-line-btn" type="button">I don't know — show me</button></div>
+    `;
+    const inputs   = [...activeRow.querySelectorAll('.calc-input')];
+    const checkBtn = activeRow.querySelector('.check-btn');
+    const revealBtn= activeRow.querySelector('.reveal-line-btn');
+    const feedback = activeRow.querySelector('.feedback-msg');
+
+    function lock(){ inputs.forEach(i=>i.disabled=true); checkBtn.disabled=true; revealBtn.disabled=true; }
+
+    function commit(status){
+      historyWrap.insertAdjacentHTML('beforeend', buildCalcHistoryHTML(step, status));
+      idx++;
+      renderActive(true);
+    }
+
+    function doCheck(){
+      if(inputs.every(inp => inp.value.trim() === '')) return;
+      const bad = [];
+      inputs.forEach((inp,i)=>{
+        const ok = fieldMatches(inp.value, step.fields[i]);
+        inp.classList.toggle('right', ok);
+        inp.classList.toggle('wrong', !ok);
+        if(!ok) bad.push(step.fields[i].k.replace(/<[^>]+>/g,''));
+      });
+      if(!bad.length){
+        feedback.className = 'feedback-msg correct';
+        feedback.textContent = '✅ Correct — locking that step in.';
+        lock();
+        setTimeout(()=>commit('correct'), 450);
+      } else {
+        attempts++;
+        feedback.className = 'feedback-msg incorrect';
+        const which = bad.length === inputs.length ? '' : ` (${bad.join(', ')})`;
+        feedback.textContent = attempts >= 2
+          ? `✗ Not quite${which}. Re-check the bit width and the order of the digits — stuck? tap "show me" below.`
+          : `✗ Not quite${which} — try again.`;
+        const firstBad = inputs.find(inp => inp.classList.contains('wrong'));
+        if(firstBad){ firstBad.focus(); firstBad.select(); }
+      }
+    }
+
+    checkBtn.addEventListener('click', doCheck);
+    inputs.forEach((inp,i)=>{
+      inp.addEventListener('keydown', (e)=>{
+        if(e.key !== 'Enter') return;
+        e.preventDefault();
+        // Enter walks to the next empty box, and only submits from the last one
+        const next = inputs[i+1];
+        if(next && next.value.trim() === '') next.focus(); else doCheck();
+      });
+    });
+    revealBtn.addEventListener('click', ()=>{
+      inputs.forEach((inp,i)=>{ inp.value = step.fields[i].a; });
+      lock();
+      feedback.className = 'feedback-msg revealed-msg';
+      feedback.textContent = '⟲ Revealed — this one\'s logged as reviewed, not solved.';
+      setTimeout(()=>commit('revealed'), 500);
+    });
+    if(focusInput && inputs.length) inputs[0].focus();
+  }
+
+  function reset(){
+    idx = 0; attempts = 0;
+    historyWrap.innerHTML = '';
+    noteBox.classList.remove('show');
+    doneSet.delete(item.n);
+    try{ localStorage.setItem('microcode-reviewer-done', JSON.stringify([...doneSet])); }catch(e){}
+    updateProgress();
+    const navEl = document.querySelector(`.nav-item a[data-n="${item.n}"]`);
+    if(navEl) navEl.classList.remove('done');
+    renderActive(true);
+  }
+
+  resetBtn.addEventListener('click', reset);
+  renderActive();
+}
+
 function wireInvalid(card, item){
   const btn = card.querySelector('.flash-btn');
   const box = card.querySelector('.invalid-reveal');
@@ -1018,7 +3056,7 @@ updateProgress();
 /* reset every instruction at once — clear storage, then reload so each
    stepper rebuilds from cycle 0 */
 document.getElementById('resetAllBtn').addEventListener('click', ()=>{
-  if(!confirm('Reset all progress? Every instruction goes back to cycle 0.')) return;
+  if(!confirm('Reset all progress? Every instruction and problem goes back to step 0.')) return;
   doneSet.clear();
   try{ localStorage.removeItem('microcode-reviewer-done'); }catch(e){}
   location.reload();
