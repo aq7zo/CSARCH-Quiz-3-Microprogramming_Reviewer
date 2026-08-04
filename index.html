@@ -28,9 +28,10 @@
   --font-display: 'IBM Plex Sans Condensed', sans-serif;
   --font-body: 'IBM Plex Sans', sans-serif;
   --font-mono: 'IBM Plex Mono', monospace;
+  --sidebar-w: 300px;
 }
 *{box-sizing:border-box;}
-html{scroll-behavior:smooth;}
+html{scroll-behavior:smooth; -webkit-text-size-adjust:100%;}
 body{
   margin:0;
   background:
@@ -47,12 +48,15 @@ body{
 /* ---------- layout shell ---------- */
 .shell{
   display:grid;
-  grid-template-columns: 300px 1fr;
+  grid-template-columns: var(--sidebar-w) 1fr;
   min-height:100vh;
+  transition: grid-template-columns .22s ease;
 }
-@media (max-width: 900px){
-  .shell{ grid-template-columns: 1fr; }
-  .sidebar{ position:relative; height:auto; width:100%; }
+html.sidebar-collapsed{ --sidebar-w: 0px; }
+/* scoped to desktop: on mobile the sidebar is a drawer and must stay openable
+   even if the user left it collapsed at desktop width */
+@media (min-width: 901px){
+  html.sidebar-collapsed .sidebar{ visibility:hidden; opacity:0; }
 }
 
 /* ---------- sidebar ---------- */
@@ -61,12 +65,61 @@ body{
   background:var(--bg-panel-2);
   border-right:1px solid var(--border);
   padding:22px 0 0;
+  transition: opacity .18s ease, transform .25s ease;
 }
 .sidebar::-webkit-scrollbar{width:8px;}
 .sidebar::-webkit-scrollbar-thumb{background:rgba(232,237,242,0.12); border-radius:4px;}
 
+/* ---------- sidebar toggle (desktop) ---------- */
+.sidebar-toggle{
+  position:fixed; top:14px; left:calc(var(--sidebar-w) - 44px); z-index:60;
+  width:32px; height:32px; display:flex; align-items:center; justify-content:center;
+  background:var(--bg-panel); border:1px solid var(--border); border-radius:8px;
+  color:var(--ink-dim); font-family:var(--font-mono); font-size:14px; line-height:1;
+  cursor:pointer; transition: left .22s ease, color .15s, border-color .15s, background .15s;
+}
+.sidebar-toggle:hover{ color:var(--signal); border-color:var(--trace); }
+html.sidebar-collapsed .sidebar-toggle{ left:12px; }
+.sidebar-toggle .icon-open{ display:none; }
+html.sidebar-collapsed .sidebar-toggle .icon-open{ display:inline; }
+html.sidebar-collapsed .sidebar-toggle .icon-close{ display:none; }
+
+/* ---------- drawer backdrop (mobile) ---------- */
+.nav-backdrop{
+  display:none; position:fixed; inset:0; z-index:65;
+  background:rgba(4,10,16,0.62); opacity:0; pointer-events:none;
+  transition:opacity .25s ease;
+}
+html.nav-open .nav-backdrop{ opacity:1; pointer-events:auto; }
+
+/* ---------- sticky top bar (mobile) ---------- */
+.mobile-bar{
+  display:none; position:sticky; top:0; z-index:50;
+  align-items:center; gap:12px;
+  margin:-24px -16px 18px; padding:10px 14px;
+  background:rgba(15,33,49,0.94); backdrop-filter:blur(8px);
+  border-bottom:1px solid var(--border);
+}
+.mobile-bar .bar-title{
+  font-family:var(--font-display); font-size:14.5px; font-weight:600; color:var(--ink);
+  white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
+}
+.mobile-bar .bar-count{
+  margin-left:auto; font-family:var(--font-mono); font-size:11px; color:var(--ink-faint);
+  white-space:nowrap;
+}
+.nav-open-btn{
+  flex-shrink:0; width:38px; height:38px; display:flex; align-items:center; justify-content:center;
+  background:transparent; border:1px solid var(--border); border-radius:8px;
+  color:var(--ink-dim); font-size:16px; line-height:1; cursor:pointer;
+}
+.mobile-progress{
+  position:absolute; left:0; bottom:-1px; height:3px; width:0%;
+  background:linear-gradient(90deg, var(--trace), var(--signal)); transition:width .4s ease;
+}
+
 .brand{
-  padding:0 22px 18px;
+  padding:0 52px 18px 22px;
   border-bottom:1px solid var(--border);
   margin-bottom:6px;
 }
@@ -117,7 +170,10 @@ body{
 .sidebar-footer .reset-all:hover{ border-color:var(--danger); color:var(--danger); background:rgba(0,0,0,0); }
 
 /* ---------- main ---------- */
-main{ position:relative; padding: 48px clamp(20px,5vw,72px) 120px; max-width:980px; }
+main{
+  position:relative; padding: 48px clamp(20px,5vw,72px) 120px;
+  max-width:980px; width:100%; margin-inline:auto;
+}
 
 header.hero{ margin-bottom:56px; }
 .hero-eyebrow{
@@ -316,7 +372,7 @@ header.hero{ margin-bottom:56px; }
 }
 
 footer{
-  max-width:980px; margin: 40px clamp(20px,5vw,72px) 60px; padding-top:26px; border-top:1px solid var(--border);
+  max-width:none; margin: 40px 0 0; padding-top:26px; border-top:1px solid var(--border);
   color:var(--ink-faint); font-size:12.5px; font-family:var(--font-mono);
 }
 
@@ -324,9 +380,76 @@ footer{
 .legend{ display:flex; gap:16px; flex-wrap:wrap; margin-top:26px; }
 .legend .item{ display:flex; align-items:center; gap:7px; font-family:var(--font-mono); font-size:11.5px; color:var(--ink-faint); }
 .legend .dot{ width:16px; height:16px; border-radius:5px; display:inline-flex; align-items:center; justify-content:center; font-size:9px; border:1px solid var(--border); }
+
+/* ======================================================================
+   MOBILE — sidebar becomes an off-canvas drawer, layout goes single column
+   ====================================================================== */
+@media (max-width: 900px){
+  .shell{ grid-template-columns: 1fr; }
+
+  .sidebar{
+    position:fixed; inset:0 auto 0 0; width:min(86vw, 320px); height:100dvh;
+    z-index:70; transform:translateX(-100%); overscroll-behavior:contain;
+    box-shadow: 0 0 40px rgba(0,0,0,0.5);
+  }
+  html.nav-open .sidebar{ transform:translateX(0); }
+  html.nav-open, html.nav-open body{ overflow:hidden; }
+
+  .nav-backdrop{ display:block; }
+  .sidebar-toggle{ display:none; }
+  .mobile-bar{ display:flex; }
+
+  main{ padding: 24px 16px 80px; }
+  header.hero{ margin-bottom:32px; }
+  .section-head{ margin: 40px 0 20px; scroll-margin-top:68px; }
+  .card{ padding:16px 14px; scroll-margin-top:68px; }
+  .card-title-wrap{ min-width:140px; }
+  .card-asm{ font-size:15.5px; overflow-wrap:anywhere; }
+
+  /* bigger touch targets in the drawer */
+  .nav-item a{ padding:10px 20px; }
+
+  /* history lines: drop the fixed third column, park the bus tags on their own row */
+  .rtn-line{ grid-template-columns: 22px 1fr; gap:8px; padding:10px 12px; }
+  .rtn-line .code{ font-size:12.5px; overflow-wrap:anywhere; }
+  .rtn-line .bus-tags{ grid-column:2; justify-content:flex-start; margin-top:4px; flex-wrap:wrap; }
+
+  /* input owns a full row; 16px keeps iOS Safari from zooming the page on focus */
+  .rtn-input{ min-width:0; flex:1 1 100%; font-size:16px; }
+}
+
+@media (max-width: 600px){
+  .foundation summary{ padding:15px 16px; font-size:15px; }
+  .foundation-body{ padding:0 16px 20px; }
+  .hero p.lede{ font-size:15px; }
+  .stepper-controls .cycle-count{ margin-left:0; }
+}
+
+@media (prefers-reduced-motion: reduce){
+  html{ scroll-behavior:auto; }
+  *, *::before, *::after{
+    transition-duration:.01ms !important;
+    animation-duration:.01ms !important;
+    animation-iteration-count:1 !important;
+  }
+}
 </style>
+<script>
+/* apply the persisted sidebar state before first paint — avoids a flash of
+   expanded sidebar on load */
+try{
+  if(localStorage.getItem('microcode-reviewer-sidebar') === 'collapsed'){
+    document.documentElement.classList.add('sidebar-collapsed');
+  }
+}catch(e){}
+</script>
 </head>
 <body>
+
+<button class="sidebar-toggle" id="sidebarToggle" type="button" aria-controls="sidebar" aria-expanded="true" aria-label="Toggle navigation sidebar">
+  <span class="icon-close" aria-hidden="true">‹</span><span class="icon-open" aria-hidden="true">☰</span>
+</button>
+<div class="nav-backdrop" id="navBackdrop"></div>
 
 <div class="shell">
   <!-- ============ SIDEBAR ============ -->
@@ -350,6 +473,13 @@ footer{
 
   <!-- ============ MAIN ============ -->
   <main>
+    <div class="mobile-bar">
+      <button class="nav-open-btn" id="navOpenBtn" type="button" aria-controls="sidebar" aria-expanded="false" aria-label="Open navigation">☰</button>
+      <span class="bar-title">Microprograming Reviewer</span>
+      <span class="bar-count" id="progressTextMobile">0 / 40</span>
+      <div class="mobile-progress" id="progressFillMobile"></div>
+    </div>
+
     <header class="hero">
       <div class="hero-eyebrow">Forward Microcode Translation · Worked Reviewer</div>
       <h1><em>Microprogramming Fundamentals:</em><br>An Assembly Walkthrough</h1>
@@ -629,6 +759,12 @@ function updateProgress(){
   const pct = Math.round((doneSet.size/TOTAL_ITEMS)*100);
   document.getElementById('progressFill').style.width = pct+"%";
   document.getElementById('progressText').textContent = `${doneSet.size} / ${TOTAL_ITEMS} worked`;
+  // the sidebar's progress bar is out of reach while the mobile drawer is closed,
+  // so mirror it into the sticky top bar
+  const mFill = document.getElementById('progressFillMobile');
+  const mText = document.getElementById('progressTextMobile');
+  if(mFill) mFill.style.width = pct+"%";
+  if(mText) mText.textContent = `${doneSet.size} / ${TOTAL_ITEMS}`;
 }
 
 /* ======================================================================
@@ -889,8 +1025,48 @@ document.getElementById('resetAllBtn').addEventListener('click', ()=>{
 });
 
 /* ======================================================================
+   SIDEBAR — desktop collapse (persisted) + mobile off-canvas drawer
+   ====================================================================== */
+const root = document.documentElement;
+const sidebarToggle = document.getElementById('sidebarToggle');
+const navOpenBtn = document.getElementById('navOpenBtn');
+const navBackdrop = document.getElementById('navBackdrop');
+
+function setDrawer(open){
+  root.classList.toggle('nav-open', open);
+  navOpenBtn.setAttribute('aria-expanded', String(open));
+}
+
+sidebarToggle.addEventListener('click', ()=>{
+  const collapsed = root.classList.toggle('sidebar-collapsed');
+  sidebarToggle.setAttribute('aria-expanded', String(!collapsed));
+  try{ localStorage.setItem('microcode-reviewer-sidebar', collapsed ? 'collapsed' : 'open'); }catch(e){}
+});
+sidebarToggle.setAttribute('aria-expanded', String(!root.classList.contains('sidebar-collapsed')));
+
+navOpenBtn.addEventListener('click', ()=> setDrawer(!root.classList.contains('nav-open')));
+navBackdrop.addEventListener('click', ()=> setDrawer(false));
+// tapping an instruction should take you there, not leave you staring at the drawer
+document.getElementById('navSections').addEventListener('click', (e)=>{
+  if(e.target.closest('a')) setDrawer(false);
+});
+document.addEventListener('keydown', (e)=>{
+  if(e.key === 'Escape' && root.classList.contains('nav-open')) setDrawer(false);
+});
+// leaving mobile width with the drawer open would otherwise strand the scroll lock
+window.addEventListener('resize', ()=>{
+  if(window.innerWidth > 900 && root.classList.contains('nav-open')) setDrawer(false);
+});
+
+/* ======================================================================
    active nav highlight on scroll
    ====================================================================== */
+// scrolling a link inside a hidden/off-canvas sidebar drags the document scroll
+// with it, so only auto-scroll the nav when it's actually on screen
+function sidebarVisible(){
+  if(window.innerWidth <= 900) return root.classList.contains('nav-open');
+  return !root.classList.contains('sidebar-collapsed');
+}
 const navLinks = [...document.querySelectorAll('.nav-item a')];
 const cardEls = [...document.querySelectorAll('.card')];
 const io = new IntersectionObserver((entries)=>{
@@ -902,7 +1078,7 @@ const io = new IntersectionObserver((entries)=>{
       const active = document.querySelector(`.nav-item a[data-n="${n}"]`);
       if(active){
         active.classList.add('active');
-        active.scrollIntoView({block:'nearest'});
+        if(sidebarVisible()) active.scrollIntoView({block:'nearest'});
       }
     }
   });
