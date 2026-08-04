@@ -180,6 +180,10 @@ html.nav-open .nav-backdrop{ opacity:1; pointer-events:auto; }
 main{
   position:relative; padding: 48px clamp(20px,5vw,72px) 120px;
   max-width:980px; width:100%; margin-inline:auto;
+  /* a grid item defaults to min-width:auto, which lets a wide child (the
+     datapath figure) stretch the whole page instead of scrolling inside
+     its own box — this is what keeps that contained */
+  min-width:0;
 }
 
 header.hero{ margin-bottom:56px; }
@@ -377,6 +381,128 @@ header.hero{ margin-bottom:56px; }
   font-family:var(--font-mono); font-size:12.5px; background:rgba(232,237,242,0.07);
   padding:1px 5px; border-radius:4px; color:var(--signal);
 }
+
+/* ======================================================================
+   DATAPATH — the single-bus Von Neumann CPU figure (NLec 20, slide 14)
+   drawn as one live SVG. The picture itself is static; classes dropped on
+   its nodes and wires by the animator light up whichever cycle the learner
+   is standing on.
+   ====================================================================== */
+.datapath{
+  margin-top:14px; border:1px solid var(--border); border-radius:10px;
+  background:var(--bg-panel-2); overflow:hidden;
+}
+.datapath summary{
+  cursor:pointer; list-style:none; display:flex; align-items:center; gap:10px;
+  padding:11px 15px; font-family:var(--font-display); font-weight:600; font-size:13.5px;
+  color:var(--ink-dim);
+}
+.datapath summary::-webkit-details-marker{ display:none; }
+.datapath summary::before{ content:"▸"; color:#7fb0c9; font-size:12px; transition:transform .2s; }
+.datapath[open] summary::before{ transform:rotate(90deg); }
+.datapath[open] summary{ color:var(--ink); border-bottom:1px solid var(--border); }
+.datapath summary:hover{ color:var(--ink); }
+.datapath summary .tag{
+  margin-left:auto; font-family:var(--font-mono); font-size:9.5px; font-weight:400;
+  text-transform:uppercase; letter-spacing:.09em; color:var(--ink-faint);
+}
+.dp-body{ padding:14px 15px 16px; }
+
+/* the figure is drawn at a fixed 1000×660 and only ever scaled down; below
+   ~720px it stops shrinking and pans horizontally instead of going illegible */
+.dp-figure{ overflow-x:auto; overflow-y:hidden; margin:0 0 12px; -webkit-overflow-scrolling:touch; }
+.dp-figure svg{ display:block; width:100%; min-width:740px; height:auto; }
+.dp-pan{ display:none; font-family:var(--font-mono); font-size:10.5px; color:var(--ink-faint); margin:-6px 0 10px; }
+
+/* ---- figure primitives ---- */
+.dp-svg{ font-family:var(--font-mono); }
+.dp-node rect, .dp-node polygon{
+  fill:var(--bg-card); stroke:var(--border); stroke-width:1.3;
+  transition: fill .22s ease, stroke .22s ease;
+}
+.dp-node .dp-label{
+  fill:var(--ink-dim); font-size:13px; text-anchor:middle; pointer-events:none;
+  transition: fill .22s ease;
+}
+.dp-node .dp-sub{ fill:var(--ink-faint); font-size:9px; text-anchor:middle; pointer-events:none; }
+.dp-note{ fill:var(--ink-faint); font-size:9.5px; text-anchor:middle; }
+.dp-note.start{ text-anchor:start; } .dp-note.end{ text-anchor:end; }
+.dp-wire{ fill:none; stroke:rgba(232,237,242,0.20); stroke-width:1.3; transition:stroke .22s ease; }
+.dp-wire.thin{ stroke-dasharray:3 4; }
+
+/* current flowing down a wire — a dash train marching along the same path */
+.dp-flow{
+  fill:none; stroke:var(--signal); stroke-width:3; stroke-linecap:round;
+  stroke-dasharray:9 27; stroke-dashoffset:36; opacity:0;
+}
+@keyframes dp-flow{ from{ stroke-dashoffset:36; } to{ stroke-dashoffset:0; } }
+.dp-edge.on .dp-flow{ opacity:1; animation: dp-flow .72s linear infinite; }
+.dp-edge.on .dp-wire{ stroke:var(--trace); }
+.dp-edge.on.rev .dp-flow{ animation-direction:reverse; }
+.dp-edge.on.ctrl .dp-flow{ stroke:#7fb0c9; }
+/* a figure scrolled out of view keeps its state but stops burning frames */
+.dp-svg.idle .dp-flow, .dp-svg.idle .dp-railflow{ animation-play-state:paused; }
+
+/* ---- node states. Order matters: a register that both latches and takes
+   part in a transaction should read as "latching", so .dst comes last ---- */
+.dp-node.mute rect, .dp-node.mute polygon{ stroke:rgba(232,237,242,0.06); }
+.dp-node.mute .dp-label, .dp-node.mute .dp-sub{ fill:var(--ink-faint); opacity:.55; }
+.dp-node.act rect, .dp-node.act polygon{ stroke:#7fb0c9; fill:rgba(127,176,201,0.15); }
+.dp-node.act .dp-label{ fill:#7fb0c9; }
+.dp-node.src rect, .dp-node.src polygon{ stroke:var(--trace); fill:rgba(201,138,75,0.18); }
+.dp-node.src .dp-label{ fill:var(--trace); }
+.dp-node.dst rect, .dp-node.dst polygon{ stroke:var(--signal); fill:rgba(242,177,52,0.17); }
+.dp-node.dst .dp-label{ fill:var(--signal); }
+
+/* while a cycle is lit, everything not taking part recedes */
+.dp-svg .dp-node{ opacity:1; transition:opacity .22s ease; }
+.dp-svg.live .dp-node:not(.src):not(.dst):not(.act){ opacity:.4; }
+
+/* the internal bus: a rail, plus an overlay whose length is set per cycle */
+.dp-rail{ fill:rgba(232,237,242,0.10); stroke:var(--border); stroke-width:1; transition:fill .22s ease; }
+.dp-svg.live .dp-rail{ fill:rgba(201,138,75,0.24); }
+.dp-railflow{
+  fill:none; stroke:var(--signal); stroke-width:7; stroke-linecap:round;
+  stroke-dasharray:10 26; stroke-dashoffset:36; opacity:0;
+}
+.dp-edge.on .dp-railflow{ opacity:.95; animation: dp-flow .72s linear infinite; }
+.dp-edge.on.rev .dp-railflow{ animation-direction:reverse; }
+
+/* the ALU's op line: idles as the full menu, narrows to the live op */
+.dp-aluop{ fill:var(--ink-faint); font-size:9.5px; text-anchor:middle; letter-spacing:.04em; transition:fill .2s ease; }
+.dp-aluop.hot{ fill:var(--signal); font-size:12.5px; letter-spacing:.1em; }
+
+/* ---- caption + transport ---- */
+.dp-cap{
+  font-family:var(--font-mono); font-size:12.2px; line-height:1.6; color:var(--ink-dim);
+  background:var(--bg-card); border:1px solid var(--border); border-left:2px solid #7fb0c9;
+  border-radius:0 8px 8px 0; padding:10px 13px; min-height:42px;
+}
+.dp-cap b{ color:var(--ink); font-weight:600; }
+.dp-cap .rtn{ color:var(--signal); }
+.dp-cap .hush{ color:var(--ink-faint); }
+.dp-controls{ display:flex; align-items:center; gap:8px; flex-wrap:wrap; margin-top:11px; }
+.dp-btn{
+  font-family:var(--font-mono); font-size:12px; padding:5px 11px; border-radius:6px; cursor:pointer;
+  border:1px solid var(--border); background:transparent; color:var(--ink-dim); transition:all .15s;
+}
+.dp-btn:hover:not(:disabled){ border-color:#7fb0c9; color:#7fb0c9; }
+.dp-btn:disabled{ opacity:.3; cursor:default; }
+.dp-cycle{ font-family:var(--font-mono); font-size:11px; color:var(--ink-faint); min-width:96px; }
+.dp-hint{ font-family:var(--font-mono); font-size:10.5px; color:var(--ink-faint); margin-left:auto; }
+.dp-legend{
+  display:flex; align-items:center; gap:7px; flex-wrap:wrap; margin-top:10px;
+  font-family:var(--font-mono); font-size:10.5px; color:var(--ink-faint);
+}
+.dp-legend em{ font-style:normal; opacity:.7; margin-right:9px; }
+.dp-legend .k{ width:10px; height:10px; border-radius:3px; border:1px solid; flex-shrink:0; }
+.dp-legend .k.out{ border-color:var(--trace); background:rgba(201,138,75,0.18); }
+.dp-legend .k.in{ border-color:var(--signal); background:rgba(242,177,52,0.17); }
+.dp-legend .k.act{ border-color:#7fb0c9; background:rgba(127,176,201,0.15); }
+
+/* committed cycles double as a scrubber for the figure */
+.rtn-history .rtn-line{ cursor:pointer; transition:border-color .15s; }
+.rtn-history .rtn-line:hover{ border-color:rgba(127,176,201,0.45); }
 
 footer{
   max-width:none; margin: 40px 0 0; padding-top:26px; border-top:1px solid var(--border);
@@ -618,6 +744,15 @@ footer{
   .calc-row .check-btn{ width:100%; }
   .setup-chip{ font-size:11px; }
 
+  /* datapath: the figure has a floor it can't shrink past, so it pans instead */
+  .dp-body{ padding:12px 11px 14px; }
+  .datapath summary{ padding:11px 13px; font-size:13px; }
+  .datapath summary .tag{ display:none; }
+  .dp-figure svg{ min-width:720px; }
+  .dp-pan{ display:block; }
+  .dp-cap{ font-size:11.6px; }
+  .dp-hint{ margin-left:0; flex:1 1 100%; }
+
   /* walkthrough: tighter gutters, and the wide tables scroll rather than squash */
   .wt{ padding:6px 13px 18px; }
   .walkthrough summary{ padding:11px 13px; font-size:13px; }
@@ -737,6 +872,15 @@ try{
           <div class="fetch-chip"><b>2.</b> Zout, PCin, WMFC</div>
           <div class="fetch-chip"><b>3.</b> MDRout, IRin</div>
           <p>Every card below starts numbering at <strong>line 4</strong> — the execute phase — because lines 1–3 already happened, every single time, exactly like this. Every execute phase ends in <strong>END</strong>, which tells the CU to loop back and fetch the next instruction.</p>
+        </div>
+
+        <div class="f-block" style="margin-top:18px;">
+          <h3>The hardware those signals are gating</h3>
+          <p>This is the single-bus Von Neumann CPU the whole microprogramming section is written against. Step it through the three fetch cycles below to see what <code>PCout, MARin, Read, Select4, Add, Zin</code> physically means — then every instruction card carries the same figure, replaying whichever cycle you just committed.</p>
+          <details class="datapath" id="dpReference" open>
+            <summary>Von Neumann single-bus CPU — NLec 20, slide 14<span class="tag">reference figure</span></summary>
+            <div class="dp-body" id="dpReferenceBody"></div>
+          </details>
         </div>
       </div>
     </details>
@@ -2836,6 +2980,495 @@ function fieldMatches(userText, field){
 }
 
 /* ======================================================================
+   DATAPATH — a live redraw of the single-bus Von Neumann CPU figure from
+   NLec 20 (slides 14–21). The picture is static; the animator lights up
+   whichever cycle the learner is standing on, so the diagram and the RTN
+   line they just committed always tell the same story.
+
+   Deliberately spoiler-safe: a card's figure only ever advances to a cycle
+   the learner has already committed, so it can never show them the answer
+   to the line they're being asked for.
+   ====================================================================== */
+
+/* the fetch phase is identical for every instruction (slide 38), so the
+   figure can always replay cycles 1–3 before the card's own lines */
+const DP_FETCH = [
+  "PCout, MARin, READ, Select4, ADD, Zin",
+  "Zout, PCin, WMFC",
+  "MDRout, IRin"
+];
+
+/* registers whose box in the figure is fixed, whatever the instruction */
+const DP_FIXED = {
+  PC:'pc', MAR:'mar', MDR:'mdr', IR:'ir', IRAF:'ir', IRDF:'ir',
+  Y:'y', Z:'z', ZREM:'z', TEMP:'temp', FLAGS:'flags'
+};
+/* sub-registers live in the same physical box as their 64-bit parent */
+const DP_FAMILY = {
+  EAX:'RAX', AX:'RAX', AH:'RAX', AL:'RAX',   EBX:'RBX', BX:'RBX', BH:'RBX', BL:'RBX',
+  ECX:'RCX', CX:'RCX', CH:'RCX', CL:'RCX',   EDX:'RDX', DX:'RDX', DH:'RDX', DL:'RDX',
+  ESI:'RSI', SI:'RSI',  EDI:'RDI', DI:'RDI', ESP:'RSP', SP:'RSP',  EBP:'RBP', BP:'RBP'
+};
+const DP_PRETTY = { IRAF:"IR's address field", IRDF:"IR's data field", ZREM:"Z (remainder half)" };
+const DP_SYM = { ADD:'+', SUB:'−', MUL:'×', DIV:'÷', AND:'AND', OR:'OR', XOR:'XOR' };
+/* a conditional END names its operand in prose rather than as a gating
+   signal, so it needs picking out of the condition text separately */
+const DP_COND_REG = /\b(R[A-D]X|R[SD]I|R[SB]P|E[A-D]X|E[SD]I|E[SB]P|[A-D][XHL])\b/g;
+const DP_COND_FLAG = /\b[CZSOPA]F\b/;
+
+/* where each register taps the internal bus rail, in figure coordinates */
+const DP_RAILY = {
+  pc:71, mar:117, mdr:163, r0:220, r1:256, rn:314, temp:354,
+  y:411, ir:221, z:611, flags:644, alu:494
+};
+/* horizontal centres, used to pan the figure when it is too wide to fit */
+const DP_NODEX = {
+  pc:447, mar:447, mdr:447, r0:447, r1:447, rn:447, temp:447, y:447, z:447,
+  ir:194, cu:156, const:718, mux:595, alu:521, flags:630, membus:835, mem:925
+};
+
+function dpPretty(name){ return DP_PRETTY[name.toUpperCase()] || name; }
+
+/* Which of the three general-purpose boxes stands for which register, for
+   THIS instruction. Relabelling R0/R1/R(n−1) with the registers actually
+   named in the microprogram is what turns a generic figure into this card's
+   figure. No instruction in the reviewer touches more than three. */
+function dpSlots(lines){
+  const order = [];
+  const claim = up => {
+    if(DP_FIXED[up]) return;
+    const fam = DP_FAMILY[up] || up;
+    if(!order.includes(fam)) order.push(fam);
+  };
+  DP_FETCH.concat(lines).forEach(raw=>{
+    String(raw).replace(/<br\s*\/?>/gi, ',').split(',').forEach(t=>{
+      const m = /^\s*([A-Za-z]+)(?:out|in)\s*$/i.exec(t);
+      if(m){ claim(m[1].toUpperCase()); return; }
+      const cond = /^\s*if\s*\((.+)\)\s*then\s+end\s*$/i.exec(t);
+      if(cond) (cond[1].toUpperCase().match(DP_COND_REG) || []).forEach(claim);
+    });
+  });
+  const keys = ['r0','r1','rn'];
+  const map = {};
+  const labels = { r0:'R0', r1:'R1', rn:'R(n−1)' };
+  order.forEach((fam,i)=>{
+    const k = keys[Math.min(i, keys.length-1)];
+    map[fam] = k;
+    if(i < keys.length) labels[k] = fam;
+  });
+  return { map, labels, used:new Set(Object.values(map)) };
+}
+
+function dpRegNode(name, slots){
+  const up = name.toUpperCase();
+  if(DP_FIXED[up]) return DP_FIXED[up];
+  return slots.map[DP_FAMILY[up] || up] || null;
+}
+
+/* ---------- one RTN line -> what the hardware actually does ---------- */
+function dpDecodeLine(raw, slots){
+  const toks = String(raw).replace(/<br\s*\/?>/gi, ',').split(',').map(s=>s.trim()).filter(Boolean);
+  const c = {
+    raw: toks.join(', '), driver:null, driverName:'', listeners:[], listenerNames:[],
+    aluOp:null, mux:null, carry:false, zIn:false,
+    read:false, write:false, wmfc:false, end:false, cond:null, condNodes:[]
+  };
+  toks.forEach(t=>{
+    let m;
+    if(/^end$/i.test(t)){ c.end = true; return; }
+    if((m = /^if\s*\((.+)\)\s*then\s+end$/i.exec(t))){
+      c.cond = m[1].trim();
+      c.end = true;
+      // the CU has to look at whatever the condition names
+      (c.cond.toUpperCase().match(DP_COND_REG) || []).forEach(r=>{
+        const k = dpRegNode(r, slots);
+        if(k && !c.condNodes.includes(k)) c.condNodes.push(k);
+      });
+      if(DP_COND_FLAG.test(c.cond.toUpperCase())) c.condNodes.push('flags');
+      return;
+    }
+    if(/^read$/i.test(t)){ c.read = true; return; }
+    if(/^write$/i.test(t)){ c.write = true; return; }
+    if(/^wmfc$/i.test(t)){ c.wmfc = true; return; }
+    if(/^set\s*carry[\s-]?in$/i.test(t)){ c.carry = true; return; }
+    if((m = /^select\s*(y|\d+)$/i.exec(t))){ c.mux = m[1].toUpperCase(); return; }
+    if(/^(add|sub|mul|div|and|or|xor|not|shl|shr)$/i.test(t)){ c.aluOp = t.toUpperCase(); return; }
+    if((m = /^([A-Za-z]+)out$/i.exec(t))){
+      c.driver = dpRegNode(m[1], slots);
+      c.driverName = dpPretty(m[1]);
+      return;
+    }
+    if((m = /^([A-Za-z]+)in$/i.exec(t))){
+      const k = dpRegNode(m[1], slots);
+      // Z is the only register fed by the ALU rather than by the bus
+      if(k === 'z'){ c.zIn = true; return; }
+      if(k) c.listeners.push(k);
+      c.listenerNames.push(dpPretty(m[1]));
+      return;
+    }
+  });
+  return c;
+}
+
+/* fetch phase + execute phase, with the memory transaction threaded through:
+   a READ started on one cycle may only complete on a later cycle's WMFC */
+function dpProgram(lines, slots){
+  let pending = null;
+  return DP_FETCH.concat(lines).map((raw,i)=>{
+    const c = dpDecodeLine(raw, slots);
+    c.n = i + 1;
+    c.fetch = i < 3;
+    if(c.read) pending = 'read';
+    if(c.write) pending = 'write';
+    if(c.wmfc){ c.completes = pending; pending = null; }
+    c.dataReturn = c.completes === 'read';
+    return c;
+  });
+}
+
+function dpCaption(c){
+  const bits = [];
+  if(c.driverName) bits.push(`<b>${c.driverName}</b> gates onto the internal bus`);
+  if(c.listenerNames.length){
+    const one = c.listenerNames.length === 1;
+    bits.push(`<b>${c.listenerNames.join('</b> and <b>')}</b> latch${one?'es':''} what's on it`);
+  }
+  if(c.aluOp){
+    const a = c.mux === 'Y' ? 'Y' : (c.mux || null);
+    bits.push(a && DP_SYM[c.aluOp]
+      ? `the ALU computes <b>bus ${DP_SYM[c.aluOp]} ${a}</b>`
+      : `the ALU applies <b>${c.aluOp}</b> to the bus value`);
+  }
+  if(c.carry) bits.push('carry-in is forced to 1, so the sum comes out as bus + 1');
+  if(c.zIn) bits.push('the ALU output is clocked into <b>Z</b>');
+  if(c.read) bits.push("<b>READ</b> goes out on the control lines, MAR's address on the address lines");
+  if(c.write) bits.push('<b>WRITE</b> goes out — MAR supplies the address, MDR the data');
+  if(c.dataReturn) bits.push('MFC comes back and the word arrives in <b>MDR</b>');
+  else if(c.completes === 'write') bits.push('MFC comes back — the store has landed');
+  else if(c.wmfc) bits.push('the CPU stalls here until MFC arrives');
+  if(c.cond) bits.push(`the control unit tests <b>${c.cond}</b> and only then ends the instruction`);
+  else if(c.end) bits.push('<b>END</b> hands the CU back to the fetch phase');
+  if(!bits.length) bits.push('no datapath activity this cycle');
+  return `<span class="rtn">${c.n}. ${c.raw}</span><br>${bits.join('; ')}.`;
+}
+
+/* ---------- the figure itself ---------- */
+function dpNode(key, x, y, w, h, label, opt){
+  opt = opt || {};
+  const cx = x + w/2, cy = y + h/2;
+  const dy = opt.sub ? -2 : 4.5;
+  const sub = opt.sub ? `<text class="dp-sub" x="${cx}" y="${cy+12}">${opt.sub}</text>` : '';
+  return `<g class="dp-node${opt.cls?' '+opt.cls:''}" data-node="${key}">`
+       + `<rect x="${x}" y="${y}" width="${w}" height="${h}" rx="6"/>`
+       + `<text class="dp-label" x="${cx}" y="${cy+dy}"${opt.size?` style="font-size:${opt.size}px"`:''}>${label}</text>`
+       + sub + `</g>`;
+}
+function dpEdge(key, d, opt){
+  opt = opt || {};
+  return `<g class="dp-edge${opt.cls?' '+opt.cls:''}" data-edge="${key}">`
+       + `<path class="dp-wire${opt.thin?' thin':''}" d="${d}"${opt.arrow?` marker-end="url(#${opt.arrow})"`:''}/>`
+       + `<path class="dp-flow" d="${d}"/></g>`;
+}
+
+function dpFigure(slots, uid){
+  const L = slots.labels;
+  // dim the spare register boxes only once some of them carry a real name —
+  // in the generic reference figure all three are the point
+  const gp = k => ({ cls: (slots.used.size && !slots.used.has(k)) ? 'mute' : '' });
+  const arrow = `dp-arrow-${uid}`;
+  return `
+<svg class="dp-svg" viewBox="0 0 1000 660" role="img"
+     aria-label="Single-bus Von Neumann CPU datapath: registers on one internal bus, ALU, control unit and the memory bus.">
+  <defs>
+    <marker id="${arrow}" viewBox="0 0 8 8" refX="7.2" refY="4" markerWidth="5.5" markerHeight="5.5" orient="auto-start-reverse">
+      <path d="M0,0 L8,4 L0,8 Z" fill="rgba(232,237,242,0.30)"/>
+    </marker>
+  </defs>
+
+  <!-- external / memory side, drawn first so the CPU sits on top -->
+  ${dpEdge('memctl', 'M60,262 V24 H830 V56', {arrow, cls:'ctrl'})}
+  ${dpEdge('addr',   'M522,117 H830', {arrow})}
+  ${dpEdge('data',   'M522,163 H830')}
+  ${dpEdge('membus', 'M840,146 H870')}
+  <text class="dp-note" x="500" y="17">control lines · READ / WRITE / MFC</text>
+  <text class="dp-note" x="676" y="108">address lines</text>
+  <text class="dp-note" x="676" y="180">data lines</text>
+  <text class="dp-note" x="835" y="252">memory bus</text>
+  ${dpNode('membus', 830, 56, 10, 180, '', {})}
+  ${dpNode('mem', 870, 76, 110, 140, 'memory', {sub:'sends MFC'})}
+
+  <!-- control unit fan-out, drawn under the rail so crossings read as jumps -->
+  ${dpEdge('alucl', 'M230,402 V530 H399', {arrow, cls:'ctrl', thin:true})}
+  ${dpEdge('ctrl',  'M100,402 V446', {arrow, cls:'ctrl'})}
+  ${dpEdge('ircu',  'M194,236 V262', {arrow, cls:'ctrl', thin:true})}
+  <text class="dp-note" x="100" y="462">control signals</text>
+  <text class="dp-note" x="100" y="476">…</text>
+  <text class="dp-note end" x="224" y="496">ALU control lines</text>
+
+  <!-- register stubs. Every stub is drawn register → rail, so an "in" is
+       simply the same wire played backwards -->
+  ${dpEdge('pc',   'M372,71 H312')}
+  ${dpEdge('mar',  'M372,117 H312')}
+  ${dpEdge('mdr',  'M372,163 H312')}
+  ${dpEdge('r0',   'M372,220 H312')}
+  ${dpEdge('r1',   'M372,256 H312')}
+  ${dpEdge('rn',   'M372,314 H312')}
+  ${dpEdge('temp', 'M372,354 H312')}
+  ${dpEdge('y',    'M372,411 H312')}
+  ${dpEdge('z',    'M372,611 H312')}
+  ${dpEdge('ir',   'M268,221 H300')}
+  ${dpEdge('flags','M688,611 H712 V644 H312')}
+
+  <!-- ALU cluster -->
+  ${dpEdge('alub',    'M312,494 H410 V506')}
+  ${dpEdge('ymux',    'M446,426 V438 H556 V452')}
+  ${dpEdge('cmux',    'M718,426 V438 H634 V452')}
+  ${dpEdge('muxalu',  'M595,480 V506')}
+  ${dpEdge('aluz',    'M447,566 V596', {arrow})}
+  ${dpEdge('aluflags','M596,566 V596', {arrow, thin:true})}
+  ${dpEdge('carry',   'M712,540 H631', {arrow, cls:'ctrl'})}
+
+  <!-- the internal CPU bus -->
+  <rect class="dp-rail" x="300" y="44" width="12" height="608" rx="6"/>
+  <g class="dp-edge" data-edge="rail"><path class="dp-railflow" d=""/></g>
+  <text class="dp-note" transform="translate(292,352) rotate(-90)">internal CPU bus</text>
+
+  <!-- left column: IR and the control unit -->
+  ${dpNode('ir', 120, 206, 148, 30, 'IR')}
+  <g class="dp-node" data-node="cu">
+    <rect x="44" y="262" width="224" height="140" rx="6"/>
+    <text class="dp-label" x="156" y="320" style="font-size:11.5px">instruction decoder and</text>
+    <text class="dp-label" x="156" y="336" style="font-size:11.5px">control logic</text>
+    <text class="dp-label" x="156" y="352" style="font-size:11.5px">(control unit)</text>
+  </g>
+
+  <!-- right column: the registers hanging off the bus -->
+  ${dpNode('pc',   372, 56,  150, 30, 'PC')}
+  ${dpNode('mar',  372, 102, 150, 30, 'MAR')}
+  ${dpNode('mdr',  372, 148, 150, 30, 'MDR')}
+  ${dpNode('r0',   372, 206, 150, 28, L.r0, gp('r0'))}
+  ${dpNode('r1',   372, 242, 150, 28, L.r1, gp('r1'))}
+  <text class="dp-note" x="447" y="288">⋮</text>
+  ${dpNode('rn',   372, 300, 150, 28, L.rn, gp('rn'))}
+  ${dpNode('temp', 372, 340, 150, 28, 'TEMP', {cls:'mute'})}
+  ${dpNode('y',    372, 396, 150, 30, 'Y')}
+  ${dpNode('const',680, 388,  76, 38, '4', {sub:'const'})}
+  ${dpNode('mux',  520, 452, 150, 28, 'MUX')}
+  <text class="dp-note start" x="678" y="470">Select</text>
+  <text class="dp-note start" x="708" y="534">carry-in</text>
+
+  <g class="dp-node" data-node="alu">
+    <polygon points="372,506 670,506 602,566 440,566"/>
+    <text class="dp-label" x="521" y="534" style="font-size:14px">ALU</text>
+    <text class="dp-aluop" x="521" y="552">ADD · SUB · … · XOR</text>
+  </g>
+  <text class="dp-note start" x="418" y="500">B</text>
+  <text class="dp-note end"   x="587" y="500">A</text>
+
+  ${dpNode('z',     372, 596, 150, 30, 'Z')}
+  ${dpNode('flags', 572, 596, 116, 30, 'FLAGS', {cls:'mute'})}
+</svg>`;
+}
+
+/* ---------- the animator ---------- */
+const DP_REDUCED = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+function dpMount(host, lines, opts){
+  opts = opts || {};
+  const slots = dpSlots(lines);
+  const prog  = dpProgram(lines, slots);
+  const uid   = 'dp' + (dpMount.seq = (dpMount.seq || 0) + 1);
+
+  host.innerHTML = `
+    <div class="dp-figure">${dpFigure(slots, uid)}</div>
+    <div class="dp-pan">↔ swipe the figure sideways to pan it</div>
+    <div class="dp-cap"></div>
+    <div class="dp-controls">
+      <button class="dp-btn dp-prev" type="button" aria-label="previous cycle">◀</button>
+      <button class="dp-btn dp-next" type="button" aria-label="next cycle">▶</button>
+      <span class="dp-cycle"></span>
+      <button class="dp-btn dp-replay" type="button">↻ replay</button>
+      <span class="dp-hint"></span>
+    </div>
+    <div class="dp-legend">
+      <span class="k out"></span>drives the bus <em>(out)</em>
+      <span class="k in"></span>latches from the bus <em>(in)</em>
+      <span class="k act"></span>takes part <em>(ALU · MUX · memory · CU)</em>
+    </div>`;
+
+  const svg     = host.querySelector('.dp-svg');
+  const figure  = host.querySelector('.dp-figure');
+  const cap     = host.querySelector('.dp-cap');
+  const rail    = svg.querySelector('.dp-railflow');
+  const aluOpEl = svg.querySelector('.dp-aluop');
+  const constEl = svg.querySelector('[data-node="const"] .dp-label');
+  const counter = host.querySelector('.dp-cycle');
+  const hintEl  = host.querySelector('.dp-hint');
+  const prevBtn = host.querySelector('.dp-prev');
+  const nextBtn = host.querySelector('.dp-next');
+  const replayBtn = host.querySelector('.dp-replay');
+
+  const node = k => svg.querySelector(`[data-node="${k}"]`);
+  const edge = k => svg.querySelector(`[data-edge="${k}"]`);
+
+  let cur = 3;                                   // fetch phase is always available
+  let unlocked = opts.unlocked || 3;
+  let beat = null;
+
+  function clear(){
+    if(beat){ clearTimeout(beat); beat = null; }
+    svg.classList.remove('live');
+    svg.querySelectorAll('.dp-node').forEach(n=>n.classList.remove('src','dst','act'));
+    svg.querySelectorAll('.dp-edge').forEach(e=>e.classList.remove('on','rev'));
+    rail.setAttribute('d','');
+    aluOpEl.classList.remove('hot');
+    aluOpEl.textContent = 'ADD · SUB · … · XOR';
+    constEl.textContent = '4';
+  }
+
+  const mark = (k, cls) => { const n = node(k); if(n) n.classList.add(cls); };
+  const light = (k, rev) => { const e = edge(k); if(!e) return; e.classList.add('on'); if(rev) e.classList.add('rev'); };
+
+  /* on a narrow screen the figure is wider than its box, so bring what the
+     cycle is actually about into view. The control unit is deliberately left
+     out — it lights on every cycle, so including it would pin the pan. */
+  function panToLive(c){
+    if(!figure || figure.scrollWidth <= figure.clientWidth + 4) return;
+    const keys = [c.driver].concat(c.listeners, c.condNodes,
+      c.zIn ? ['z'] : [], c.aluOp ? ['alu'] : [],
+      (c.read || c.write || c.wmfc) ? ['mem'] : []);
+    const xs = keys.map(k => k && DP_NODEX[k]).filter(v => v != null);
+    if(!xs.length) return;
+    const scale = figure.scrollWidth / 1000;
+    const mid = (Math.min(...xs) + Math.max(...xs)) / 2;
+    const left = Math.max(0, Math.min(mid * scale - figure.clientWidth / 2,
+                                      figure.scrollWidth - figure.clientWidth));
+    figure.scrollTo({ left, behavior: DP_REDUCED ? 'auto' : 'smooth' });
+  }
+
+  function paint(c){
+    clear();
+    svg.classList.add('live');
+
+    /* ---- beat one: whatever drives, drives ---- */
+    // the CU asserts this cycle's gating signals — that IS microprogramming
+    mark('cu','act'); light('ctrl');
+    if(!c.fetch){ mark('ir','act'); light('ircu'); }
+
+    const railPts = [];
+    if(c.driver){
+      mark(c.driver, 'src');
+      light(c.driver);                                  // stubs are drawn "out"
+      if(DP_RAILY[c.driver] != null) railPts.push(DP_RAILY[c.driver]);
+    }
+    if(c.aluOp){
+      mark('alu','act'); light('alucl');
+      light('alub');                                    // the bus is always visible to the ALU
+      railPts.push(DP_RAILY.alu);
+      aluOpEl.textContent = c.aluOp;
+      aluOpEl.classList.add('hot');
+      mark('flags','act'); light('aluflags');
+      if(c.mux){
+        mark('mux','act'); light('muxalu');
+        if(c.mux === 'Y'){ mark('y','act'); light('ymux'); }
+        else { mark('const','act'); light('cmux'); constEl.textContent = c.mux; }
+      }
+      if(c.carry) light('carry');
+    }
+    if(c.read || c.write){
+      mark('mar','act'); mark('membus','act'); mark('mem','act');
+      light('memctl'); light('addr');
+      if(c.write){ mark('mdr','act'); light('data'); }
+    } else if(c.wmfc){
+      mark('mem','act'); mark('membus','act'); light('memctl', true);
+    }
+    c.condNodes.forEach(k=>mark(k,'act'));
+
+    const railTargets = c.listeners.map(k=>DP_RAILY[k]).filter(v=>v!=null);
+    railPts.push(...railTargets);
+    if(railPts.length > 1){
+      const lo = Math.min(...railPts), hi = Math.max(...railPts);
+      rail.setAttribute('d', `M306,${lo} V${hi}`);
+      const e = edge('rail');
+      e.classList.add('on');
+      // dash trains run along the path as drawn (top → bottom); reverse it
+      // when the value is actually travelling up the rail
+      const avg = railPts.filter(v=>v !== (c.driver ? DP_RAILY[c.driver] : null))
+                         .reduce((a,b)=>a+b, 0) / Math.max(1, railPts.length - 1);
+      if(c.driver && DP_RAILY[c.driver] > avg) e.classList.add('rev');
+    }
+
+    /* ---- beat two: whatever latches, latches ---- */
+    const latch = ()=>{
+      c.listeners.forEach(k=>{ mark(k,'dst'); light(k, true); });
+      if(c.zIn){ mark('z','dst'); light('aluz'); }
+      if(c.dataReturn){ mark('mdr','dst'); light('data', true); light('memctl', true); }
+      beat = null;
+    };
+    panToLive(c);
+    if(DP_REDUCED) latch(); else beat = setTimeout(latch, 430);
+  }
+
+  function show(n){
+    cur = Math.max(1, Math.min(n, unlocked, prog.length));
+    const c = prog[cur - 1];
+    paint(c);
+    cap.innerHTML = dpCaption(c);
+    counter.textContent = `cycle ${cur} / ${prog.length}${c.fetch ? ' · fetch' : ''}`;
+    prevBtn.disabled = cur <= 1;
+    nextBtn.disabled = cur >= unlocked;
+    hintEl.textContent = unlocked >= prog.length
+      ? 'all cycles unlocked'
+      : `cycles 1–${unlocked} unlocked · commit a line to reveal the next`;
+  }
+
+  prevBtn.addEventListener('click', ()=>show(cur - 1));
+  nextBtn.addEventListener('click', ()=>show(cur + 1));
+  replayBtn.addEventListener('click', ()=>show(cur));
+
+  show(3);
+  dpIdleWatch(svg);
+
+  return {
+    /* the stepper calls this the moment a line is committed */
+    advance(n){ unlocked = Math.max(unlocked, Math.min(n, prog.length)); show(n); },
+    reset(){ unlocked = 3; show(3); },
+    total: prog.length
+  };
+}
+
+/* ---------- lazy build + off-screen idling ----------
+   Panels are built the first time they scroll into view rather than at page
+   load: 38 figures of SVG up front is a lot of DOM, and a figure nobody is
+   looking at should not be running a dash animation either. */
+const dpPending = new Map();
+const dpMakeObserver = (cb, margin) => ('IntersectionObserver' in window)
+  ? new IntersectionObserver(cb, { rootMargin: margin })
+  : null;
+
+const dpBuildObserver = dpMakeObserver((entries)=>{
+  entries.forEach(en=>{
+    if(!en.isIntersecting) return;
+    const build = dpPending.get(en.target);
+    dpPending.delete(en.target);
+    dpBuildObserver.unobserve(en.target);
+    if(build) build();
+  });
+}, '300px 0px');
+
+const dpIdleObserver = dpMakeObserver((entries)=>{
+  entries.forEach(en=>en.target.classList.toggle('idle', !en.isIntersecting));
+}, '120px 0px');
+
+function dpLazy(hostEl, build){
+  if(!dpBuildObserver){ build(); return; }
+  if(dpPending.has(hostEl)) return;
+  dpPending.set(hostEl, build);
+  dpBuildObserver.observe(hostEl);
+}
+function dpIdleWatch(svg){ if(dpIdleObserver) dpIdleObserver.observe(svg); }
+
+/* ======================================================================
    RENDER
    ====================================================================== */
 const app = document.getElementById('app');
@@ -2928,6 +3561,19 @@ SECTIONS.forEach(section=>{
   });
 });
 
+/* the reference copy in the foundations block carries no instruction, so its
+   program is just the three fetch cycles and its register boxes keep the
+   lecture's generic R0 / R1 / R(n−1) labels */
+(function mountReferenceFigure(){
+  const host = document.getElementById('dpReferenceBody');
+  const wrap = document.getElementById('dpReference');
+  if(!host || !wrap) return;
+  let built = false;
+  const build = ()=>{ if(!built && wrap.open){ built = true; dpMount(host, [], { unlocked:3 }); } };
+  wrap.addEventListener('toggle', ()=>{ if(wrap.open) dpLazy(host, build); });
+  dpLazy(host, build);
+})();
+
 function renderStepper(item){
   return `
     <div class="stepper">
@@ -2938,9 +3584,36 @@ function renderStepper(item){
       </div>
       <div class="rtn-history"></div>
       <div class="active-row"></div>
+      ${renderDatapath()}
       <div class="note-box">💡 ${item.note}</div>
     </div>
   `;
+}
+
+/* The figure sits below the input on purpose: you commit a cycle, your eye
+   drops to the datapath, and the hardware replays exactly what you just
+   wrote. It can never run ahead of you. */
+function renderDatapath(){
+  return `
+    <details class="datapath"${dpPrefOpen() ? ' open' : ''}>
+      <summary>Watch it on the datapath<span class="tag">von neumann single-bus cpu</span></summary>
+      <div class="dp-body"></div>
+    </details>
+  `;
+}
+
+/* One shared preference — nobody wants to open this on all 38 cards. The
+   `toggle` event fires asynchronously, so the propagated panels re-enter this
+   handler; comparing against the stored preference rather than a "currently
+   syncing" flag makes that second pass a no-op instead of a loop. */
+function dpPrefOpen(){
+  try{ return localStorage.getItem('microcode-reviewer-datapath') !== '0'; }
+  catch(e){ return true; }
+}
+function dpSyncPref(open){
+  if(open === dpPrefOpen()) return;
+  try{ localStorage.setItem('microcode-reviewer-datapath', open ? '1' : '0'); }catch(e){}
+  document.querySelectorAll('.card .datapath').forEach(d=>{ d.open = open; });
 }
 
 function renderCalcStepper(item){
@@ -2994,6 +3667,32 @@ function wireStepper(card, item){
   const resetBtn = card.querySelector('.step-reset');
   const noteBox = card.querySelector('.note-box');
 
+  /* ---- datapath figure ----------------------------------------------
+     Built the first time it is both open and near the viewport. Until then
+     `pendingCycle` remembers how far the learner has got, so the figure
+     opens already showing the cycle they are standing on. */
+  const dpDetails = card.querySelector('.datapath');
+  const dpHost = card.querySelector('.dp-body');
+  let dp = null, pendingCycle = 3;
+
+  function dpEnsure(){
+    if(dp || !dpDetails.open) return;
+    dpLazy(dpHost, ()=>{
+      if(!dpDetails.open) return;                 // closed again while queued
+      dp = dpMount(dpHost, item.lines, { unlocked: pendingCycle });
+      dp.advance(pendingCycle);
+    });
+  }
+  function dpTo(cycle){
+    pendingCycle = Math.max(pendingCycle, cycle);
+    if(dp) dp.advance(cycle); else dpEnsure();
+  }
+  dpDetails.addEventListener('toggle', ()=>{
+    dpSyncPref(dpDetails.open);
+    dpEnsure();
+  });
+  dpEnsure();
+
   // focusInput is only set on interaction-driven re-renders — focusing during the
   // initial render would scroll the page to the last card that got wired
   function renderActive(focusInput){
@@ -3021,9 +3720,11 @@ function wireStepper(card, item){
     const feedback = activeRow.querySelector('.feedback-msg');
 
     function commit(status){
-      historyWrap.insertAdjacentHTML('beforeend', `<div class="rtn-line ${status==='correct'?'was-correct':'was-revealed'}">${buildHistoryLineHTML(idx, item.lines[idx], status)}</div>`);
+      historyWrap.insertAdjacentHTML('beforeend', `<div class="rtn-line ${status==='correct'?'was-correct':'was-revealed'}" title="replay this cycle on the datapath">${buildHistoryLineHTML(idx, item.lines[idx], status)}</div>`);
+      const cycle = idx + 4;   // lines 1–3 are the fetch phase
       idx++;
       renderActive(true);
+      dpTo(cycle);
     }
 
     function doCheck(){
@@ -3068,7 +3769,17 @@ function wireStepper(card, item){
     const navEl = document.querySelector(`.nav-item a[data-n="${item.n}"]`);
     if(navEl) navEl.classList.remove('done');
     renderActive(true);
+    pendingCycle = 3;
+    if(dp) dp.reset();
   }
+
+  // a committed line stays clickable — it replays that cycle on the figure
+  historyWrap.addEventListener('click', (e)=>{
+    const line = e.target.closest('.rtn-line');
+    if(!line) return;
+    const i = [...historyWrap.children].indexOf(line);
+    if(i >= 0) dpTo(i + 4);
+  });
 
   resetBtn.addEventListener('click', reset);
   renderActive();
