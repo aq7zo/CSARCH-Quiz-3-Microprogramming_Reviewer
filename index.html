@@ -799,11 +799,11 @@ const SECTIONS = [
       {n:10, asm:"POP RSI", mode:"Stack",
         hint:"POP is PUSH in reverse. Compare it to the fetch phase: PC is read from, used as an address, and incremented — all at once. RSP can do the exact same trick.",
         lines:["RSPout, MARin, READ, Select8, ADD, Zin","Zout, RSPin, WMFC","MDRout, RSIin, END"],
-        note:"Structurally IDENTICAL to the fetch phase, with RSP standing in for PC and 8 for 4. Read from [RSP] and compute RSP+8 in the same cycle, because both only need RSP on the bus once."},
+        note:"Structurally IDENTICAL to the fetch phase, with RSP standing in for PC and 8 for 4. Read from [RSP] and compute RSP+8 in the same cycle, because both only need RSP on the bus once.<br><br><b>Why READ isn't paired with WMFC here:</b> READ only <i>starts</i> the memory access; WMFC <i>stalls</i> the CPU until MFC arrives. RSP+8 doesn't depend on the data coming back, so it runs during the memory latency instead of after it. WMFC is therefore pushed to the latest legal cycle — the one just before MDRout, the first step that actually needs the data. Putting WMFC on line 1 would freeze the datapath immediately and force the increment into its own cycle: same answer, one cycle slower."},
       {n:11, asm:"RET", mode:"Stack → Control Transfer",
         hint:"RET is a POP that targets one very specific register. Which register controls where the CPU executes next?",
         lines:["RSPout, MARin, READ, Select8, ADD, Zin","Zout, RSPin, WMFC","MDRout, PCin, END"],
-        note:"This is exactly POP PC — compare it line-for-line with problem 10. It only feels like a different instruction because the destination is invisible in the mnemonic."},
+        note:"This is exactly POP PC — compare it line-for-line with problem 10. It only feels like a different instruction because the destination is invisible in the mnemonic.<br><br><b>Why READ isn't paired with WMFC here:</b> READ only <i>starts</i> the memory access; WMFC <i>stalls</i> the CPU until MFC arrives. RSP+8 doesn't depend on the data coming back, so it runs during the memory latency instead of after it. WMFC is therefore pushed to the latest legal cycle — the one just before MDRout, the first step that actually needs the data. Putting WMFC on line 1 would freeze the datapath immediately and force the increment into its own cycle: same answer, one cycle slower."},
     ]
   },
   {
