@@ -32,6 +32,7 @@
 }
 *{box-sizing:border-box;}
 html{scroll-behavior:smooth; -webkit-text-size-adjust:100%;}
+@media (prefers-reduced-motion: reduce){ html{ scroll-behavior:auto; } }
 body{
   margin:0;
   background:
@@ -83,6 +84,28 @@ html.sidebar-collapsed .sidebar-toggle{ left:12px; }
 .sidebar-toggle .icon-open{ display:none; }
 html.sidebar-collapsed .sidebar-toggle .icon-open{ display:inline; }
 html.sidebar-collapsed .sidebar-toggle .icon-close{ display:none; }
+
+/* ---------- top-right notice (hover, or tab to it, to read) ----------
+   z-index sits above the mobile bar but below the drawer backdrop, so an open
+   drawer covers it like everything else */
+.notice{ position:fixed; top:14px; right:14px; z-index:55; }
+.notice-btn{
+  width:32px; height:32px; display:flex; align-items:center; justify-content:center;
+  background:var(--bg-panel); border:1px solid var(--border); border-radius:8px;
+  color:var(--ink-dim); font-family:var(--font-mono); font-size:13px; line-height:1;
+  cursor:pointer; transition: color .15s, border-color .15s;
+}
+.notice:hover .notice-btn, .notice:focus-within .notice-btn{ color:var(--signal); border-color:var(--trace); }
+.notice-pop{
+  position:absolute; top:calc(100% + 8px); right:0;
+  width:min(300px, calc(100vw - 28px));
+  background:var(--bg-panel); border:1px solid var(--border); border-radius:10px;
+  padding:12px 14px; font-size:12.5px; line-height:1.55; color:var(--ink-dim);
+  box-shadow:0 10px 30px rgba(0,0,0,0.45);
+  opacity:0; visibility:hidden; transform:translateY(-4px);
+  transition: opacity .15s ease, transform .15s ease, visibility .15s;
+}
+.notice:hover .notice-pop, .notice:focus-within .notice-pop{ opacity:1; visibility:visible; transform:none; }
 
 /* ---------- drawer backdrop (mobile) ---------- */
 .nav-backdrop{
@@ -714,7 +737,8 @@ footer{
 
   .nav-backdrop{ display:block; }
   .sidebar-toggle{ display:none; }
-  .mobile-bar{ display:flex; }
+  /* room on the right so the fixed notice button doesn't sit on the count */
+  .mobile-bar{ display:flex; padding-right:56px; }
 
   main{ padding: 24px 16px 80px; }
   header.hero{ margin-bottom:32px; }
@@ -794,6 +818,17 @@ try{
 <button class="sidebar-toggle" id="sidebarToggle" type="button" aria-controls="sidebar" aria-expanded="true" aria-label="Toggle navigation sidebar">
   <span class="icon-close" aria-hidden="true">‹</span><span class="icon-open" aria-hidden="true">☰</span>
 </button>
+<div class="notice">
+  <button class="notice-btn" type="button" aria-label="A note from the author" aria-describedby="noticeText">!</button>
+  <div class="notice-pop" id="noticeText" role="note">
+    The first version used a Select8 MUX input to compute RSP − 8 in a single cycle. That input does not exist in the architecture we're working with, the ALU multiplexer only offers the constant 4.<br><br>
+    
+    The solution has been updated to use the intended method: two successive subtractions of 4, which reach the same result using only the hardware the datapath actually provides.<br><br>
+
+    Apologies for the solution originally posted here prior to this update.
+  </div>
+</div>
+
 <div class="nav-backdrop" id="navBackdrop"></div>
 
 <div class="shell">
@@ -936,18 +971,18 @@ const SECTIONS = [
         lines:["RSIout, Yin","IRAFout, SelectY, ADD, Zin","Zout, MARin","RAXout, MDRin, WRITE, WMFC, END"],
         note:"The address is computed once and parked in MAR before RAX is even mentioned — MAR and MDR don't care what order they fill, only that both are full before WRITE completes."},
       {n:9, asm:"PUSH RAX", mode:"Stack (implicit RSP)",
-        extension:"The standard MUX only offers the constant 4 (for PC+4). A 64-bit stack moves the pointer 8 bytes at a time, so this reviewer assumes a Select8 MUX input — the same idea as Select4, one size up.",
-        hint:"PUSH secretly does two things: (1) make room on the stack by moving RSP, (2) store the value at the new top. Which one has to happen first? And once Z holds the new RSP, how many registers can latch it in the same cycle?",
-        lines:["RSPout, Select8, SUB, Zin","Zout, RSPin, MARin","RAXout, MDRin, WRITE, WMFC, END"],
-        note:"Line 5 is an optimization in action: one 'out' can feed MANY 'in's. Z drives the bus once while RSP and MAR both latch the new stack address, saving a whole cycle."},
+        extension:"The constant MUX offers exactly one value: 4, the one the fetch phase uses for PC+4. There is no wider input. A 64-bit stack slot is two of those, so moving the stack pointer takes two chained Select4 subtractions instead of one — and three cycles, not one. The middle cycle is not waste: a register cannot drive the bus and latch a new value on the same clock edge, so the cycle that computes Z minus 4 and the cycle that latches the result back into Z have to be separate. PC moves in one cycle; RSP costs three. That gap is the lesson here.",
+        hint:"PUSH secretly does two things: (1) make room on the stack by moving RSP, (2) store the value at the new top. Which one has to happen first? Moving RSP is not a single trip through the ALU here — but once Z finally holds the new RSP, how many registers can latch it in the same cycle?",
+        lines:["RSPout, Select4, SUB, Zin","Zout, Select4, SUB","Zin","Zout, MARin, RSPin","RAXout, MDRin, WRITE, WMFC, END"],
+        note:"Line 7 is an optimization in action: one 'out' can feed MANY 'in's. Z drives the bus once while RSP and MAR both latch the new stack address, saving a whole cycle.<br><br>Lines 5 and 6 are the price of the missing constant. The ALU can only subtract 4 per pass, so the pointer needs a second pass — and that second pass splits in two, because line 5 has Z driving the bus into the ALU and line 6 has Z latching what the ALU produced. Same register, opposite directions, so they cannot share a clock edge."},
       {n:10, asm:"POP RSI", mode:"Stack",
-        hint:"POP is PUSH in reverse. Compare it to the fetch phase: PC is read from, used as an address, and incremented — all at once. RSP can do the exact same trick.",
-        lines:["RSPout, MARin, READ, Select8, ADD, Zin","Zout, RSPin, WMFC","MDRout, RSIin, END"],
-        note:"Structurally IDENTICAL to the fetch phase, with RSP standing in for PC and 8 for 4. Read from [RSP] and compute RSP+8 in the same cycle, because both only need RSP on the bus once.<br><br><b>Why READ isn't paired with WMFC here:</b> READ only <i>starts</i> the memory access; WMFC <i>stalls</i> the CPU until MFC arrives. RSP+8 doesn't depend on the data coming back, so it runs during the memory latency instead of after it. WMFC is therefore pushed to the latest legal cycle — the one just before MDRout, the first step that actually needs the data. Putting WMFC on line 1 would freeze the datapath immediately and force the increment into its own cycle: same answer, one cycle slower."},
+        hint:"POP is PUSH in reverse. Compare it to the fetch phase: PC is read from, used as an address, and incremented — all at once. RSP can START the same trick in one cycle, but count carefully how many cycles it needs to FINISH the increment.",
+        lines:["RSPout, MARin, READ, Select4, ADD, Zin","Zout, Select4, ADD","Zin","Zout, RSPin, WMFC","MDRout, RSIin, END"],
+        note:"Close to the fetch phase, but pointedly NOT identical — and the difference is the whole point. Fetch lands PC+4 in a single cycle because 4 is exactly the constant the MUX hands out. Popping a 64-bit slot needs twice that, which the ALU can only reach in two passes, so what fetch finishes on line 1 takes POP until line 6. What DOES carry over is the overlap on line 4: RSP goes on the bus once and serves two masters, addressing memory and feeding the ALU in the same cycle.<br><br><b>Why READ isn't paired with WMFC here:</b> READ only <i>starts</i> the memory access; WMFC <i>stalls</i> the CPU until MFC arrives. The pointer update doesn't depend on the data coming back, so lines 5 and 6 run underneath the memory latency rather than behind it. WMFC is therefore pushed to the latest legal cycle — line 7, the one just before MDRout, the first step that actually needs the data. Putting WMFC on line 4 would freeze the datapath immediately, and RSP would then have to be gated onto the bus a second time to start the update: same answer, one cycle longer, with the whole update now queued after MFC instead of hidden under it."},
       {n:11, asm:"RET", mode:"Stack → Control Transfer",
         hint:"RET is a POP that targets one very specific register. Which register controls where the CPU executes next?",
-        lines:["RSPout, MARin, READ, Select8, ADD, Zin","Zout, RSPin, WMFC","MDRout, PCin, END"],
-        note:"This is exactly POP PC — compare it line-for-line with problem 10. It only feels like a different instruction because the destination is invisible in the mnemonic.<br><br><b>Why READ isn't paired with WMFC here:</b> READ only <i>starts</i> the memory access; WMFC <i>stalls</i> the CPU until MFC arrives. RSP+8 doesn't depend on the data coming back, so it runs during the memory latency instead of after it. WMFC is therefore pushed to the latest legal cycle — the one just before MDRout, the first step that actually needs the data. Putting WMFC on line 1 would freeze the datapath immediately and force the increment into its own cycle: same answer, one cycle slower."},
+        lines:["RSPout, MARin, READ, Select4, ADD, Zin","Zout, Select4, ADD","Zin","Zout, RSPin, WMFC","MDRout, PCin, END"],
+        note:"This is exactly POP PC — compare it line-for-line with problem 10, including the three cycles the pointer update needs. It only feels like a different instruction because the destination is invisible in the mnemonic.<br><br><b>Why READ isn't paired with WMFC here:</b> READ only <i>starts</i> the memory access; WMFC <i>stalls</i> the CPU until MFC arrives. The pointer update doesn't depend on the data coming back, so lines 5 and 6 run underneath the memory latency rather than behind it. WMFC is therefore pushed to the latest legal cycle — line 7, the one just before MDRout, the first step that actually needs the data. Putting WMFC on line 4 would freeze the datapath immediately, and RSP would then have to be gated onto the bus a second time to start the update: same answer, one cycle longer, with the whole update now queued after MFC instead of hidden under it."},
     ]
   },
   {
@@ -1075,17 +1110,17 @@ const SECTIONS = [
         lines:["If (RCX != 0) then END<br>IRDFout, Yin","PCout, SelectY, ADD, Zin","Zout, PCin, END"],
         note:"A deliberate repeat: RTN never encodes WHICH label you're jumping to — that lives in the immediate offset inside the instruction word, not in the microcode's shape."},
       {n:38, asm:"LOOP L3", mode:"Relative, conditional (decrement + test)",
-        extension:"Decrementing by exactly 1 needs a constant-1 MUX input typical diagrams might not show. This reviewer assumes Select1, the same way Select8 was assumed for the stack.",
+        extension:"Decrementing by exactly 1 needs a constant-1 MUX input that typical diagrams might not show. This reviewer assumes Select1 exists. Note that this is a genuine assumption, not a workaround: unlike the stack pointer, which reaches its step size by chaining the constant 4, there is no way to build the constant 1 out of 4s.",
         hint:"LOOP quietly does TWO things: decrement RCX, then test it. Which has to finish before the branch condition can even be evaluated?",
         lines:["RCXout, Select1, SUB, Zin","Zout, RCXin","If (RCX==0) then END<br>IRDFout, Yin","PCout, SelectY, ADD, Zin","Zout, PCin, END"],
         note:"LOOP is 'DEC RCX' fused with a conditional relative jump. Once you can write both halves separately (problem 12's pattern, then problem 36's), LOOP is just gluing them together in the right order."},
       {n:39, asm:"CALL L4", extra:"(assume L4 is an absolute address)", mode:"Absolute, control transfer + stack push",
         hint:"CALL must do everything RET will later undo: push a return address BEFORE jumping. Which address counts as 'the return address' at this point in the cycle — and what is PC holding right now?",
-        lines:["RSPout, Select8, SUB, Zin","Zout, RSPin, MARin","PCout, MDRin, WRITE, WMFC","IRAFout, PCin, END"],
+        lines:["RSPout, Select4, SUB, Zin","Zout, Select4, SUB","Zin","Zout, MARin, RSPin","PCout, MDRin, WRITE, WMFC","IRAFout, PCin, END"],
         note:"PC already points at the instruction AFTER this CALL — the fetch phase incremented it before execution even began. That's exactly the address you want pushed, and exactly what RET (problem 11) pops back off."},
       {n:40, asm:"CALL L3", extra:"(assume L3 is a relative offset)", mode:"Relative, control transfer + stack push",
         hint:"This is CALL's push-the-return-address half (identical to problem 39) fused onto the relative-JMP half (problem 33). Assemble it from those two pieces before checking.",
-        lines:["RSPout, Select8, SUB, Zin","Zout, RSPin, MARin","PCout, MDRin, WRITE, WMFC","IRDFout, Yin","PCout, SelectY, ADD, Zin","Zout, PCin, END"],
+        lines:["RSPout, Select4, SUB, Zin","Zout, Select4, SUB","Zin","Zout, MARin, RSPin","PCout, MDRin, WRITE, WMFC","IRDFout, Yin","PCout, SelectY, ADD, Zin","Zout, PCin, END"],
         note:"Forty problems in, and this is two earlier answers glued together: PUSH-the-return-address (problem 39) + relative JMP (problem 33). Microcode complexity almost always decomposes into patterns you've already written."},
     ]
   },
@@ -3959,10 +3994,57 @@ sidebarToggle.setAttribute('aria-expanded', String(!root.classList.contains('sid
 
 navOpenBtn.addEventListener('click', ()=> setDrawer(!root.classList.contains('nav-open')));
 navBackdrop.addEventListener('click', ()=> setDrawer(false));
-// tapping an instruction should take you there, not leave you staring at the drawer
+/* Datapath figures are built lazily, so every card is short until its figure
+   scrolls into range. A plain #hash jump therefore aims at a stale layout: the
+   figures above the target build a moment later, each growing by most of a
+   screen, and shove the target well out of view. So don't jump once — hold the
+   target in place for the few frames it takes the layout to settle.
+
+   Native smooth scrolling can't do that: it commits to one absolute offset up
+   front and animates blind. So we run the easing ourselves and re-aim at the
+   card's live position every frame — each hop is `behavior:'instant'`, and the
+   animation is the sequence of hops. Reduced-motion and the deep-link-on-load
+   case pass smooth=false and just snap. */
+const REDUCED_MOTION = matchMedia('(prefers-reduced-motion: reduce)');
+function pinToCard(el, smooth){
+  const start = performance.now();
+  const margin = parseFloat(getComputedStyle(el).scrollMarginTop) || 0;
+  let last = start;
+  const pin = (now)=>{
+    const dt = now - last; last = now;
+    const y = window.scrollY;
+    const target = y + el.getBoundingClientRect().top - margin;
+    // exponential ease-out: ~99% of the remaining gap in 380ms, and independent
+    // of refresh rate so 120Hz doesn't arrive twice as fast
+    const k = (smooth && !REDUCED_MOTION.matches) ? 1 - Math.pow(0.01, dt/380) : 1;
+    window.scrollTo({ top: y + (target - y) * k, behavior:'instant' });
+    // keep pinning past arrival — a figure 300px below can build after the
+    // target has already held still for a few frames
+    if(now - start < 800) requestAnimationFrame(pin);
+  };
+  requestAnimationFrame(pin);
+}
 document.getElementById('navSections').addEventListener('click', (e)=>{
-  if(e.target.closest('a')) setDrawer(false);
+  const link = e.target.closest('a');
+  if(!link) return;
+  // tapping an instruction should take you there, not leave you staring at the
+  // drawer — and this has to run first, since an open drawer locks body scroll
+  setDrawer(false);
+  // leave new-tab / new-window clicks to the browser
+  if(e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
+  const target = document.getElementById(decodeURIComponent(link.hash).slice(1));
+  if(!target) return;
+  e.preventDefault();
+  history.pushState(null, '', link.hash);
+  pinToCard(target, true);
 });
+// a reload or a shared link arrives with #item-N already set, and lands just as
+// wrong. No animation here: easing down from the top would drag the viewport past
+// every card on the way and build all 38 figures to do it.
+if(location.hash){
+  const target = document.getElementById(decodeURIComponent(location.hash).slice(1));
+  if(target) requestAnimationFrame(()=>pinToCard(target));
+}
 document.addEventListener('keydown', (e)=>{
   if(e.key === 'Escape' && root.classList.contains('nav-open')) setDrawer(false);
 });
@@ -3980,6 +4062,17 @@ function sidebarVisible(){
   if(window.innerWidth <= 900) return root.classList.contains('nav-open');
   return !root.classList.contains('sidebar-collapsed');
 }
+// scrollIntoView on a nav link scrolls *every* scrollable ancestor, the document
+// included — and smoothly, per html's scroll-behavior — which drags the page off
+// a hash jump that is still landing. Move the sidebar's own scrollTop instead.
+// scrollBy is safe to animate natively — it moves one element with a fixed
+// height, so there is no growing layout to re-aim at
+function navScrollTo(a){
+  const r = a.getBoundingClientRect(), s = sidebarEl.getBoundingClientRect();
+  const d = r.top < s.top ? r.top - s.top : (r.bottom > s.bottom ? r.bottom - s.bottom : 0);
+  if(d) sidebarEl.scrollBy({ top:d, behavior: REDUCED_MOTION.matches ? 'instant' : 'smooth' });
+}
+const sidebarEl = document.getElementById('sidebar');
 const navLinks = [...document.querySelectorAll('.nav-item a')];
 const cardEls = [...document.querySelectorAll('.card')];
 const io = new IntersectionObserver((entries)=>{
@@ -3991,7 +4084,7 @@ const io = new IntersectionObserver((entries)=>{
       const active = document.querySelector(`.nav-item a[data-n="${n}"]`);
       if(active){
         active.classList.add('active');
-        if(sidebarVisible()) active.scrollIntoView({block:'nearest'});
+        if(sidebarVisible()) navScrollTo(active);
       }
     }
   });
