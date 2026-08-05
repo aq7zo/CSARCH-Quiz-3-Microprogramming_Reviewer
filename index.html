@@ -196,6 +196,17 @@ html.nav-open .nav-backdrop{ opacity:1; pointer-events:auto; }
 .nav-item a.done::after{ content:"●"; font-size:6px; color:var(--ok); margin-left:6px; }
 
 .sidebar-footer{ margin-top:22px; padding:22px; border-top:1px solid var(--border); }
+.prefs{ margin-bottom:16px; }
+.prefs-title{
+  font-family:var(--font-mono); font-size:10px; letter-spacing:.12em; text-transform:uppercase;
+  color:var(--ink-faint); margin-bottom:6px;
+}
+.pref{ display:flex; align-items:flex-start; gap:9px; padding:5px 0; cursor:pointer; }
+.pref input{ width:13px; height:13px; margin:2px 0 0; flex-shrink:0; cursor:pointer; accent-color:var(--signal); }
+.pref-text{ display:flex; flex-direction:column; gap:2px; }
+.pref b{ font-size:11.5px; font-weight:600; color:var(--ink-dim); transition:color .15s; }
+.pref i{ font-style:normal; font-family:var(--font-mono); font-size:9.5px; line-height:1.45; color:var(--ink-faint); }
+.pref:hover b, .pref input:checked ~ .pref-text b{ color:var(--ink); }
 .sidebar-footer .reset-all{ width:100%; text-align:center; font-size:11.5px; padding:9px 10px; }
 .sidebar-footer .reset-all:hover{ border-color:var(--danger); color:var(--danger); background:rgba(0,0,0,0); }
 
@@ -848,6 +859,17 @@ try{
     </div>
     <div id="navSections"></div>
     <div class="sidebar-footer">
+      <div class="prefs">
+        <div class="prefs-title">Navigation</div>
+        <label class="pref">
+          <input type="checkbox" id="prefAutoAdvance">
+          <span class="pref-text"><b>Auto-jump to the next item</b><i>pans down once you finish an item correctly</i></span>
+        </label>
+        <label class="pref">
+          <input type="checkbox" id="prefArrowNav">
+          <span class="pref-text"><b>Arrow-key navigation</b><i>↓ next item · ↑ previous — off while typing</i></span>
+        </label>
+      </div>
       <button class="btn secondary reset-all" id="resetAllBtn" type="button">↻ Reset all progress</button>
     </div>
   </nav>
@@ -3504,6 +3526,100 @@ function dpLazy(hostEl, build){
 function dpIdleWatch(svg){ if(dpIdleObserver) dpIdleObserver.observe(svg); }
 
 /* ======================================================================
+   NAVIGATION PREFERENCES — auto-jump and arrow-key paging. Both are on by
+   default (they're what most people want while drilling) and both persist,
+   so anyone who finds the movement distracting turns it off once.
+   ====================================================================== */
+const PREF_KEYS = {
+  autoAdvance: 'microcode-reviewer-autoadvance',
+  arrowNav:    'microcode-reviewer-arrownav'
+};
+const prefs = { autoAdvance:true, arrowNav:true };
+
+function readPref(key){
+  try{ return localStorage.getItem(key) !== '0'; }   // absent → default on
+  catch(e){ return true; }
+}
+function writePref(key, on){
+  try{ localStorage.setItem(key, on ? '1' : '0'); }catch(e){}
+}
+Object.keys(PREF_KEYS).forEach(k=>{ prefs[k] = readPref(PREF_KEYS[k]); });
+
+(function wirePrefs(){
+  [['autoAdvance','prefAutoAdvance'], ['arrowNav','prefArrowNav']].forEach(([k, id])=>{
+    const box = document.getElementById(id);
+    if(!box) return;
+    box.checked = prefs[k];
+    box.addEventListener('change', ()=>{
+      prefs[k] = box.checked;
+      writePref(PREF_KEYS[k], box.checked);
+    });
+  });
+})();
+
+/* Cards are queried live rather than cached: this runs while the cards are
+   still being appended, so any list taken now would be short. */
+function cardList(){ return [...document.querySelectorAll('#app .card')]; }
+
+/* a card's distance from where a jump would park it — 0 means "sitting at
+   the top of the viewport", negative means "scrolled past its heading" */
+function cardOffsets(){
+  return cardList().map(el=>({
+    el,
+    top: el.getBoundingClientRect().top - (parseFloat(getComputedStyle(el).scrollMarginTop) || 0)
+  }));
+}
+
+function jumpToCard(el){
+  history.replaceState(null, '', '#' + el.id);
+  pinToCard(el, true);
+}
+
+/* Finishing an item leaves the learner staring at a card with nothing left to
+   type. Give the ✓ and the closing note a beat to land, then pan to the next
+   one so their eye follows the page instead of hunting for it. */
+function autoAdvanceFrom(card){
+  if(!prefs.autoAdvance) return;
+  const cards = cardList();
+  const next = cards[cards.indexOf(card) + 1];
+  if(!next) return;                                  // last card — stay put
+  setTimeout(()=>{ if(prefs.autoAdvance) jumpToCard(next); }, 700);
+}
+
+/* ↓ / ↑ page through the cards. Up returns to the top of the card you're
+   standing in the middle of first, and only then steps back a card — the same
+   thing a "previous" button does everywhere else. */
+function stepCard(dir){
+  const cards = cardOffsets();
+  if(!cards.length) return;
+  let cur = -1;
+  cards.forEach((c,i)=>{ if(c.top <= 2) cur = i; });   // last one at or above the line
+  const target = dir > 0
+    ? cur + 1
+    : (cur >= 0 && cards[cur].top < -8 ? cur : cur - 1);
+  if(target >= cards.length) return;                  // past the last card
+  if(target < 0){                                     // above the first — back to the hero
+    window.scrollTo({ top:0, behavior: REDUCED_MOTION.matches ? 'instant' : 'smooth' });
+    return;
+  }
+  jumpToCard(cards[target].el);
+}
+
+document.addEventListener('keydown', (e)=>{
+  if(!prefs.arrowNav) return;
+  if(e.key !== 'ArrowDown' && e.key !== 'ArrowUp') return;
+  if(e.metaKey || e.ctrlKey || e.altKey || e.shiftKey) return;
+  // the open drawer locks body scroll — paging the page behind it goes nowhere
+  if(root.classList.contains('nav-open')) return;
+  // an answer box owns its own arrow keys (caret movement, autocomplete), and
+  // that's where focus lives for most of a drill
+  const t = e.target;
+  if(t && (t.isContentEditable || /^(input|textarea|select)$/i.test(t.tagName))) return;
+  e.preventDefault();
+  stepCard(e.key === 'ArrowDown' ? 1 : -1);
+});
+
+/* ======================================================================
    RENDER
    ====================================================================== */
 const app = document.getElementById('app');
@@ -3760,6 +3876,9 @@ function wireStepper(card, item){
       idx++;
       renderActive(true);
       dpTo(cycle);
+      // only a solved instruction pulls you onward — a revealed one is exactly
+      // the one you want to sit and read
+      if(status === 'correct' && idx >= item.lines.length) autoAdvanceFrom(card);
     }
 
     function doCheck(){
@@ -3887,6 +4006,7 @@ function wireCalcStepper(card, item){
       historyWrap.insertAdjacentHTML('beforeend', buildCalcHistoryHTML(step, status));
       idx++;
       renderActive(true);
+      if(status === 'correct' && idx >= item.steps.length) autoAdvanceFrom(card);
     }
 
     function doCheck(){
